@@ -1,11 +1,11 @@
-# 📘 COMMIT GUIDE (EN)
+# COMMIT GUIDE (EN)
 
 This guide explains how to write clear and professional Git commit messages for our project.
 
-## 🎯 Basic Rule
+## Basic Rule
 A commit message must answer one simple question: **What did you change?**
 
-## 🧱 Commit Format
+## Commit Format
 `type: short description`
 
 **Example:**
@@ -13,7 +13,7 @@ A commit message must answer one simple question: **What did you change?**
 
 ---
 
-## 🏷 Commit Types (Use These)
+## Commit Types (Use These)
 
 | Type | When to use | Example |
 | :--- | :--- | :--- |
@@ -26,37 +26,37 @@ A commit message must answer one simple question: **What did you change?**
 
 ---
 
-## ✍️ Writing Rules
+## Writing Rules
 
-### ✅ 1. Use the Imperative Mood (Command form) - *IMPORTANT*
+### 1. Use the Imperative Mood (Command form) - *IMPORTANT*
 Write as if you are giving a command to the codebase.
-* ✔ **Correct:** `feat: add trigger for occupancy`
-* ❌ **Wrong:** `added trigger for occupancy` / `adding trigger...`
+* **Correct:** `feat: add trigger for occupancy`
+* **Wrong:** `added trigger for occupancy` / `adding trigger...`
 
-### ✅ 2. Keep it short and clean
+### 2. Keep it short and clean
 * One line only.
 * About 5–10 words.
 * No period (`.`) at the end.
-* ✔ **Correct:** `fix: prevent duplicate active contracts`
-* ❌ **Wrong:** `fix: prevent duplicate active contracts.`
+* **Correct:** `fix: prevent duplicate active contracts`
+* **Wrong:** `fix: prevent duplicate active contracts.`
 
-### ✅ 3. One change = One commit
+### 3. One change = One commit
 Don't group massive unrelated changes into one commit.
-* ✔ **Good:** `feat: create streamlit UI for transfer`
-* ❌ **Bad:** `add UI + fix trigger bug + update readme`
+* **Good:** `feat: create streamlit UI for transfer`
+* **Bad:** `add UI + fix trigger bug + update readme`
 
 ---
 
-## 💡 Examples in Our Project
+## Examples in Our Project
 
-**✅ Good Examples:**
+**Good Examples:**
 * `chore: initialize database schema files`
 * `feat: add sp_transfer_room transaction`
 * `fix: handle null pointer in python backend`
 * `docs: add local setup guide to README`
 * `refactor: clean up index configuration`
 
-**❌ Bad Examples:**
+**Bad Examples:**
 * `update` *(unclear)*
 * `fix bug` *(no information on what bug)*
 * `done` *(hard to review)*
@@ -64,7 +64,7 @@ Don't group massive unrelated changes into one commit.
 
 ---
 
-## 🚀 Recommended Workflow
+## Recommended Workflow
 Before typing `git commit`, make sure you:
 1. **Save files:** Ensure all SQL and Python files are saved.
 2. **Test:** Verify your code runs locally without syntax errors.
@@ -73,7 +73,7 @@ Before typing `git commit`, make sure you:
 
 ---
 
-## 🚫 What NOT to Commit (The .gitignore Rule)
+## What NOT to Commit (The .gitignore Rule)
 **NEVER** use `git add .` blindly. Ensure the following files/folders are inside your `.gitignore` and are **never** pushed to the repository:
 * **`.env`**: Contains sensitive database passwords and port configurations. (Only push `.env.example`).
 * **`__pycache__/`, `venv/`, `*.pyc`**: Python compiled files and local virtual environments.
@@ -83,14 +83,14 @@ Before typing `git commit`, make sure you:
 * **OS hidden files**: Such as `.DS_Store` (Mac) or `Thumbs.db` (Windows).
 
 
-# 📘 HƯỚNG DẪN VIẾT COMMIT (VIE)
+# HƯỚNG DẪN VIẾT COMMIT (VIE)
 
 Tài liệu này hướng dẫn cách viết Git commit rõ ràng và chuyên nghiệp cho dự án của chúng ta.
 
-## 🎯 Nguyên tắc cốt lõi
+## Nguyên tắc cốt lõi
 Một commit message luôn phải trả lời được một câu hỏi duy nhất: **Bạn vừa thay đổi điều gì?**
 
-## 🧱 Cấu trúc Commit
+## Cấu trúc Commit
 `loại_commit: mô tả ngắn gọn`
 
 **Ví dụ:**
@@ -98,7 +98,7 @@ Một commit message luôn phải trả lời được một câu hỏi duy nh�
 
 ---
 
-## 🏷 Các loại Commit (Bắt buộc dùng)
+## Các loại Commit (Bắt buộc dùng)
 
 | Loại (Type) | Khi nào sử dụng | Ví dụ |
 | :--- | :--- | :--- |
@@ -111,7 +111,7 @@ Một commit message luôn phải trả lời được một câu hỏi duy nh�
 
 ---
 
-## 🚀 Quy trình làm việc khuyến nghị
+## Quy trình làm việc khuyến nghị
 Trước khi gõ lệnh `git commit`, hãy đảm bảo bạn đã làm các bước sau:
 1. **Lưu file:** Đảm bảo tất cả các file SQL, Python đã được save (Ctrl+S).
 2. **Chạy thử:** Code không bị báo lỗi cú pháp khi chạy ở local.
@@ -120,7 +120,7 @@ Trước khi gõ lệnh `git commit`, hãy đảm bảo bạn đã làm các bư
 
 ---
 
-## 🚫 Những File KHÔNG ĐƯỢC Commit (Quy tắc .gitignore)
+## Những File KHÔNG ĐƯỢC Commit (Quy tắc .gitignore)
 **TUYỆT ĐỐI KHÔNG** dùng lệnh `git add .` một cách mù quáng. Hãy đảm bảo các file/thư mục sau đã nằm trong `.gitignore` và **không bao giờ** bị đẩy lên kho chứa code:
 * **`.env`**: Chứa mật khẩu và cổng kết nối CSDL nhạy cảm. (Chỉ được push file mẫu `.env.example`).
 * **`__pycache__/`, `venv/`, `*.pyc`**: Các file biên dịch của Python và thư mục môi trường ảo local.
