@@ -1,0 +1,67 @@
+# ENV AND SECURITY
+.env
+.env.*
+!.env.example
+
+# PYTHON & STREAMLIT
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Streamlit
+.streamlit/secrets.toml
+# Accept commit .streamlit/config.toml to share UI
+
+# Python packaging/build
+build/
+dist/
+*.egg-info/
+
+
+# TESTING & LOGS
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# DATABASE & DOCKER VOLUMES
+mysql-data/
+*.bak
+*.dump
+docker-compose.override.yml
+.docker/
+
+# LATEX BUILD FILES
+report/**/*.aux
+report/**/*.log
+report/**/*.out
+report/**/*.toc
+report/**/*.gz
+report/**/*.fls
+report/**/*.fdb_latexmk
+report/**/*.lof
+report/**/*.lot
+report/**/*.bbl
+report/**/*.blg
+report/**/*.synctex.gz
+
+# IDE / EDITOR
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
