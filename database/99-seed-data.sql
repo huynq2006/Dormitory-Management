@@ -1,0 +1,1 @@
+# DML: INSERT dữ liệu mẫu tách khỏi schema
