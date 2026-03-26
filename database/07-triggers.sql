@@ -1,6 +1,8 @@
 -- ĐIỀU KIỆN KIỂM TRA 1 PHÒNG (TỒN TẠI, SỐ LƯỢNG SINH VIÊN ĐANG THUÊ)
 -- ĐIỀU KIỆN KIỂM TRA SINH VIÊN CHỈ THUÊ 1 PHÒNG
 
+DELIMITER // 
+
 CREATE TRIGGER trg_before_insert_contract
 BEFORE INSERT ON contracts
 FOR EACH ROW

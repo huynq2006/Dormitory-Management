@@ -78,7 +78,6 @@ CREATE TABLE IF NOT EXISTS `invoices` (
     `electric_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     `water_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     `service_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     `due_date` DATE NOT NULL,
     `payment_date` DATE DEFAULT NULL,
     `paid_status` ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
