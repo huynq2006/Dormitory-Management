@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Master Database Server
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    restart: always
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env
+    volumes:
+      - ./mysql-config/master.cnf:/etc/mysql/conf.d/master.cnf:ro
+      - ./database:/docker-entrypoint-initdb.d
+      - master-data:/var/lib/mysql
+
+  # Slave Database Server
+  mysql-slave:
+    image: mysql:8.0
+    container_name: mysql-slave
+    restart: always
+    ports:
+      - "3307:3306"
+    env_file:
+      - .env
+    depends_on:
+      - mysql-master
+    volumes:
+      - ./mysql-config/slave.cnf:/etc/mysql/conf.d/slave.cnf:ro
+      - slave-data:/var/lib/mysql
+
+volumes:
+  master-data:
+  slave-data:
