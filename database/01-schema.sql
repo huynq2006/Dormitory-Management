@@ -2,46 +2,44 @@ CREATE DATABASE IF NOT EXISTS dormitory_management
 CHARACTER SET utf8mb4 
 COLLATE utf8mb4_unicode_ci;
 
-
 USE dormitory_management;
 
-
 CREATE TABLE IF NOT EXISTS students (
-	student_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	student_code varchar(20) UNIQUE NOT NULL,
-	full_name varchar(100) NOT NULL, 
-	gender enum('M', 'F', 'O') NOT NULL,
-	dob DATE DEFAULT NULL, 
-	email varchar(100) UNIQUE NOT NULL,
-	phone varchar(20) UNIQUE null,
-	status TINYINT NOT NULL DEFAULT 1,
-	created_at DATETIME NOT NULL DEFAULT current_timestamp,
-	PRIMARY KEY (student_id)
-) ENGINE = InnoDB;
-
+    student_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    student_code VARCHAR(20) UNIQUE NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    gender ENUM('M', 'F', 'O') NOT NULL,
+    dob DATE DEFAULT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE NULL,
+    status TINYINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (student_id)
+)  ENGINE=INNODB;
 
 CREATE TABLE IF NOT EXISTS rooms (
     room_id INT UNSIGNED NOT NULL,
-    building varchar(20) default null,
+    building VARCHAR(20) DEFAULT NULL,
     capacity INT UNSIGNED NOT NULL,
     current_occupancy TINYINT UNSIGNED DEFAULT 0 NULL,
-    base_price DECIMAL(12,2) DEFAULT 0.00 NOT NULL,
+    base_price DECIMAL(12 , 2 ) DEFAULT 0.00 NOT NULL,
     r_status ENUM('available', 'full', 'maintenance') NOT NULL DEFAULT 'available',
     PRIMARY KEY (`room_id`)
-) ENGINE=InnoDB;
+)  ENGINE=INNODB;
 
-
-CREATE TABLE IF NOT EXISTS `contracts` (
-    `contract_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `student_id` INT UNSIGNED NOT NULL,
-    `room_id` INT UNSIGNED NOT NULL,
-    `start_date` DATE NOT NULL,
-    `end_date` DATE DEFAULT NULL, -- Theo note: optional
-    `status` ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active',
+    
+CREATE TABLE IF NOT EXISTS contracts (
+    contract_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    student_id INT UNSIGNED NOT NULL,
+    room_id INT UNSIGNED NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE DEFAULT NULL, -- Optional
+    status ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active',
     PRIMARY KEY (`contract_id`),
     INDEX idx_contracts_student_status(student_id, status),
 	INDEX idx_contracts_room_status(room_id, status),
-    -- Ràng buộc khóa ngoại
+    -- Foreign keys' constraint
     CONSTRAINT `fk_contract_student` 
         FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -51,17 +49,17 @@ CREATE TABLE IF NOT EXISTS `contracts` (
 ) ENGINE=InnoDB;
 
 
-CREATE TABLE meter_readings (
+CREATE TABLE IF NOT EXISTS meter_readings (
     reading_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     room_id INT UNSIGNED NOT NULL,
-    mr_month DATE NOT NULL, -- Quy ước YYYY-MM-01
+    mr_month DATE NOT NULL, -- Convention: YYYY-MM-01
     electric_old INT UNSIGNED NOT NULL DEFAULT 0,
     electric_new INT UNSIGNED NOT NULL DEFAULT 0,
     water_old INT UNSIGNED NOT NULL DEFAULT 0,
     water_new INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (reading_id),
     CONSTRAINT fk_readings_room FOREIGN KEY (room_id) REFERENCES rooms(room_id),
-    -- Ràng buộc CHECK (Nếu MySQL version >= 8.0.16)
+    -- CHECK constraints (If MySQL version >= 8.0.16)
     UNIQUE KEY `uq_room_month` (`room_id`, `mr_month`)
 ) ENGINE=InnoDB;
 
@@ -69,22 +67,22 @@ ALTER TABLE meter_readings
 ADD CONSTRAINT chk_electric_logic CHECK (electric_new >= electric_old),
 ADD CONSTRAINT chk_water_logic CHECK (water_new >= water_old);
 
-
-CREATE TABLE IF NOT EXISTS `invoices` (
-    `invoice_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `room_id` INT UNSIGNED NOT NULL,
-    `month` DATE NOT NULL,
-    `room_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `electric_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `water_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `service_fee` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `due_date` DATE NOT NULL,
-    `payment_date` DATE DEFAULT NULL,
-    `paid_status` ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
+CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    room_id INT UNSIGNED NOT NULL,
+    month DATE NOT NULL,
+    room_fee DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    electric_fee DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    water_fee DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    service_fee DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    due_date DATE NOT NULL,
+    payment_date DATE DEFAULT NULL,
+    paid_status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
     PRIMARY KEY (`invoice_id`),
     -- BR-05
     UNIQUE KEY uq_invoices_room_month (room_id, month),
-    -- Index phục vụ query
+    -- Indexes to improve log query performance
     INDEX idx_invoices_paid_due (paid_status, due_date),
     INDEX idx_invoices_month (month),
     CONSTRAINT fk_invoice_room
@@ -92,17 +90,15 @@ CREATE TABLE IF NOT EXISTS `invoices` (
         ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- audit_log Table
-
-CREATE TABLE IF NOT EXISTS `audit_log` (
-    `log_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `log_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `actor` VARCHAR(50) NOT NULL, -- Ví dụ: 'sp_transfer_room', 'trg_contracts_after_update'
-    `action` VARCHAR(50) NOT NULL, -- Ví dụ: 'TRANSFER_ROOM', 'GENERATE_INVOICE', 'ERROR'
-    `detail` TEXT, -- Mô tả thêm chi tiết[cite: 12]
-    `error_code` VARCHAR(20), -- Mã lỗi nếu hành động thất bại[cite: 12]
+CREATE TABLE IF NOT EXISTS audit_log (
+    log_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    log_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actor VARCHAR(50) NOT NULL, -- Example: 'sp_transfer_room', 'trg_contracts_after_update'
+	action VARCHAR(50) NOT NULL, -- Example: 'TRANSFER_ROOM', 'GENERATE_INVOICE', 'ERROR'
+	detail TEXT, -- Additional details
+	error_code VARCHAR(20), -- Error code if the action fails
     PRIMARY KEY (`log_id`),
-    -- Các Index để tăng tốc độ tìm kiếm log[cite: 12]
-    INDEX `idx_audit_time` (`log_time`),
-    INDEX `idx_audit_action` (`action`)
+	-- Indexes to improve log query performance
+    INDEX idx_audit_time (`log_time`),
+    INDEX idx_audit_action (`action`)
 ) ENGINE=InnoDB;
