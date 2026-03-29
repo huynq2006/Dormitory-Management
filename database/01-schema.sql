@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS students (
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     gender ENUM('M', 'F', 'O') NOT NULL,
-    dob DATE DEFAULT NULL,
+    dob DATE NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    phone VARCHAR(20) UNIQUE NULL,
+    phone VARCHAR(20) UNIQUE,
     status TINYINT NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (student_id)
@@ -22,10 +22,11 @@ CREATE TABLE IF NOT EXISTS rooms (
     room_id INT UNSIGNED NOT NULL,
     building VARCHAR(20) DEFAULT NULL,
     capacity INT UNSIGNED NOT NULL,
-    current_occupancy TINYINT UNSIGNED DEFAULT 0 NULL,
-    base_price DECIMAL(12 , 2 ) DEFAULT 0.00 NOT NULL,
+    current_occupancy TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    base_price DECIMAL(12, 2) DEFAULT 0.00 NOT NULL,
     r_status ENUM('available', 'full', 'maintenance') NOT NULL DEFAULT 'available',
-    PRIMARY KEY (`room_id`)
+    PRIMARY KEY (room_id),
+    INDEX idx_rooms_status(r_status)
 )  ENGINE=INNODB;
 
     
@@ -36,16 +37,16 @@ CREATE TABLE IF NOT EXISTS contracts (
     start_date DATE NOT NULL,
     end_date DATE DEFAULT NULL, -- Optional
     status ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active',
-    PRIMARY KEY (`contract_id`),
+    PRIMARY KEY (contract_id),
     INDEX idx_contracts_student_status(student_id, status),
 	INDEX idx_contracts_room_status(room_id, status),
     -- Foreign keys' constraint
-    CONSTRAINT `fk_contract_student` 
-        FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`)
+    CONSTRAINT fk_contract_student
+        FOREIGN KEY (student_id) REFERENCES students (student_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT `fk_contract_room` 
-        FOREIGN KEY (`room_id`) REFERENCES `rooms` (`room_id`)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT fk_contract_room 
+        FOREIGN KEY (room_id) REFERENCES rooms (room_id)
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 

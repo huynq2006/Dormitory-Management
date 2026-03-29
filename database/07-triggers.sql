@@ -39,7 +39,7 @@ BEGIN
     END IF;
 -- Check if room is full
     IF cur_occupance >= cur_capacity THEN
-        SIGNAL SQLSTATE '45000'
+		SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Room is full';
     END IF;
 

@@ -8,14 +8,14 @@ TRUNCATE TABLE rooms;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
-INSERT INTO students (student_id, student_code, full_name, email)
+INSERT INTO students (student_id, student_code, last_name, first_name, email)
 VALUES 
-(1, 'SV001', 'Nguyen Van A', 'a@gmail.com'),
-(2, 'SV002', 'Nguyen Van B', 'b@gmail.com'),
-(3, 'SV003', 'Nguyen Van C', 'c@gmail.com');
+(1, 'SV001', 'Nguyen', 'Van A', 'a@gmail.com'),
+(2, 'SV002', 'Nguyen', 'Van B', 'b@gmail.com'),
+(3, 'SV003', 'Nguyen', 'Van C', 'c@gmail.com'),
+(5, 'SV005', 'Nguyen', 'Van E', 'e@gmail.com');
 
-
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status)
+INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
 VALUES (101, 2, 0, 0.00, 'available');
 
 -- Add 1 people
@@ -33,7 +33,7 @@ VALUES (3, 101, CURDATE(), 'active');
 SELECT * FROM rooms;
 
 -- Test active contact
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status)
+INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
 VALUES (102, 2, 0, 0.00, 'available');
 
 -- Test result: student already has an active account
@@ -51,3 +51,20 @@ SELECT * FROM rooms;
 -- Valid add
 INSERT INTO contracts (student_id, room_id, start_date, status)
 VALUES (3, 101, CURDATE(), 'active');
+
+-- Test Procedure sp_transfer_rooms (2.5 constraint)
+INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
+VALUES (103, 2, 0, 0.00, 'available');
+
+UPDATE contracts
+SET status = 'ended'
+WHERE student_id = 1 AND room_id = 101 AND status = 'active';
+
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (3, 103, CURDATE(), 'active');
+
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (5, 103, CURDATE(), 'active');
+
+-- Test: Room is full or exceeds capacity
+CALL sp_transfer_room(1, 103);
