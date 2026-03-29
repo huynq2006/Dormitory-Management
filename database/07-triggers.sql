@@ -65,9 +65,11 @@ CREATE TRIGGER update_occupancy
 AFTER INSERT ON contracts
 FOR EACH ROW
 BEGIN 
+    IF NEW.status = 'active' THEN
 	UPDATE rooms
     SET current_occupancy = current_occupancy + 1 
     WHERE room_id = NEW.room_id;
+    END IF;
 END //
 
 DELIMITER ;
