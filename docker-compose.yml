@@ -15,8 +15,6 @@ services:
       - ./database:/docker-entrypoint-initdb.d
       - ./database/migrations:/migrations
       - master-data:/var/lib/mysql
-    command: >
-      sh -c "chmod 644 /etc/mysql/conf.d/master.cnf && exec mysqld"
 
   # Slave Database Server
   mysql-slave:
@@ -32,8 +30,6 @@ services:
     volumes:
       - ./mysql-config/slave.cnf:/etc/mysql/conf.d/slave.cnf
       - slave-data:/var/lib/mysql
-    command: >
-      sh -c "chmod 644 /etc/mysql/conf.d/slave.cnf && exec mysqld"
 volumes:
   master-data:
   slave-data:
