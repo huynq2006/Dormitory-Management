@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS meter_readings (
     PRIMARY KEY (reading_id),
     CONSTRAINT fk_readings_room FOREIGN KEY (room_id) REFERENCES rooms(room_id),
     -- CHECK constraints (If MySQL version >= 8.0.16)
-    UNIQUE KEY `uq_room_month` (`room_id`, `mr_month`)
+    UNIQUE KEY uq_room_month (room_id, mr_month)
 ) ENGINE=InnoDB;
 
 ALTER TABLE meter_readings 
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     due_date DATE NOT NULL,
     payment_date DATE,
     paid_status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
-    PRIMARY KEY (`invoice_id`),
+    PRIMARY KEY (invoice_id),
     -- BR-05
     UNIQUE KEY uq_invoices_room_month (room_id, month),
     -- Indexes to improve log query performance
