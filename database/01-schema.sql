@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS rooms (
     capacity INT UNSIGNED NOT NULL,
     current_occupancy TINYINT UNSIGNED NOT NULL DEFAULT 0,
     base_price DECIMAL(12, 2) DEFAULT 0.00 NOT NULL,
-    r_status ENUM('available', 'full', 'maintenance') NOT NULL DEFAULT 'available',
+    status ENUM('available', 'full', 'maintenance') NOT NULL DEFAULT 'available',
     PRIMARY KEY (room_id),
-    INDEX idx_rooms_status(r_status)
+    INDEX idx_rooms_status(status)
 )  ENGINE=INNODB;
 
     
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS contracts (
 CREATE TABLE IF NOT EXISTS meter_readings (
     reading_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     room_id INT UNSIGNED NOT NULL,
-    mr_month DATE NOT NULL, -- Convention: YYYY-MM-01
+    month DATE NOT NULL, -- Convention: YYYY-MM-01
     electric_old INT UNSIGNED NOT NULL DEFAULT 0,
     electric_new INT UNSIGNED NOT NULL DEFAULT 0,
     water_old INT UNSIGNED NOT NULL DEFAULT 0,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS meter_readings (
     PRIMARY KEY (reading_id),
     CONSTRAINT fk_readings_room FOREIGN KEY (room_id) REFERENCES rooms(room_id),
     -- CHECK constraints (If MySQL version >= 8.0.16)
-    UNIQUE KEY uq_readings_room_month (room_id, mr_month)
+    UNIQUE KEY uq_readings_room_month (room_id, month)
 ) ENGINE=InnoDB;
 
 ALTER TABLE meter_readings 
