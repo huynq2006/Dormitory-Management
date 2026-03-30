@@ -98,8 +98,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
 	action VARCHAR(50) NOT NULL, -- Example: 'TRANSFER_ROOM', 'GENERATE_INVOICE', 'ERROR'
 	detail TEXT, -- Additional details
 	error_code VARCHAR(20), -- Error code if the action fails
-    PRIMARY KEY (`log_id`),
+    PRIMARY KEY (log_id),
 	-- Indexes to improve log query performance
-    INDEX idx_audit_time (`log_time`),
-    INDEX idx_audit_action (`action`)
+    INDEX idx_audit_time (log_time),
+    INDEX idx_audit_action (action)
 ) ENGINE=InnoDB;
