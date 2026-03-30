@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS students (
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     gender ENUM('M', 'F', 'O') NOT NULL,
-    dob DATE NULL,
+    dob DATE,
     email VARCHAR(100) UNIQUE NOT NULL,
     phone VARCHAR(20) UNIQUE,
     status TINYINT NOT NULL DEFAULT 1,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS students (
 
 CREATE TABLE IF NOT EXISTS rooms (
     room_id INT UNSIGNED NOT NULL,
-    building VARCHAR(20) DEFAULT NULL,
+    building VARCHAR(20),
     capacity INT UNSIGNED NOT NULL,
     current_occupancy TINYINT UNSIGNED NOT NULL DEFAULT 0,
     base_price DECIMAL(12, 2) DEFAULT 0.00 NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS contracts (
     student_id INT UNSIGNED NOT NULL,
     room_id INT UNSIGNED NOT NULL,
     start_date DATE NOT NULL,
-    end_date DATE DEFAULT NULL, -- Optional
+    end_date DATE, -- Optional
     status ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active',
     PRIMARY KEY (contract_id),
     INDEX idx_contracts_student_status(student_id, status),
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     service_fee DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     due_date DATE NOT NULL,
-    payment_date DATE DEFAULT NULL,
+    payment_date DATE,
     paid_status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
     PRIMARY KEY (`invoice_id`),
     -- BR-05
