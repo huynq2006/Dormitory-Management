@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS meter_readings (
     INDEX idx_readings_room_month(room_id, month)
 ) ENGINE=InnoDB;
 
-ALTER TABLE meter_readings 
+ALTER TABLE meter_readings
 ADD CONSTRAINT chk_electric_logic CHECK (electric_new >= electric_old),
 ADD CONSTRAINT chk_water_logic CHECK (water_new >= water_old);
 
