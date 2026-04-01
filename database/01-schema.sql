@@ -59,9 +59,9 @@ CREATE TABLE IF NOT EXISTS meter_readings (
     water_old INT UNSIGNED NOT NULL DEFAULT 0,
     water_new INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (reading_id),
-    CONSTRAINT fk_readings_room FOREIGN KEY (room_id) REFERENCES rooms(room_id),
+    CONSTRAINT fk_meter_readings_rooms FOREIGN KEY (room_id) REFERENCES rooms(room_id),
     -- CHECK constraints (If MySQL version >= 8.0.16)
-    UNIQUE KEY uq_readings_room_month (room_id, month), 
+    UNIQUE KEY uq_readings_rooms_month (room_id, month), 
     INDEX idx_readings_room_month(room_id, month)
 ) ENGINE=InnoDB;
 
@@ -86,7 +86,6 @@ CREATE TABLE IF NOT EXISTS invoices (
     UNIQUE KEY uq_invoices_room_month (room_id, month),
     -- Indexes to improve log query performance
     INDEX idx_invoices_paid_due(paid_status, due_date),
-    INDEX idx_invoices_month(month),
     CONSTRAINT fk_invoices_rooms
         FOREIGN KEY (room_id) REFERENCES rooms(room_id)
         ON DELETE RESTRICT
