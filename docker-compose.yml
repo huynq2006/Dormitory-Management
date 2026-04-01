@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Master Database Server
   mysql-master:
@@ -7,7 +5,7 @@ services:
     container_name: mysql-master
     restart: always
     ports:
-      - "33060:3306"
+      - "13306:3306"
     env_file:
       - .env
     volumes:
@@ -22,7 +20,7 @@ services:
     container_name: mysql-slave
     restart: always
     ports:
-      - "33061:3306"
+      - "13307:3306"
     env_file:
       - .env
     depends_on:
