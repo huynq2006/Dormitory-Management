@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 USE dormitory_management;
-
+-- Part 1: Clear existing data 
 -- Clear existing data
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE invoices;
@@ -11,6 +10,7 @@ TRUNCATE TABLE rooms;
 TRUNCATE TABLE audit_log;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- Part 2: Mock data for testing views of overdue debtors
 -- Insert data
 -- Insert a student, a room, a contract, and an unpaid invoice to test the view for overdue debtors
 INSERT IGNORE INTO students (student_id, student_code, first_name, last_name, gender, email) 
@@ -26,7 +26,6 @@ INSERT INTO invoices (room_id, month, total_amount, due_date, paid_status)
 VALUES (1, '2026-03-01', 650000.00, '2026-03-10', 'unpaid');
 
 -- Test Views
-
 
 -- Case 1:Students left the dormitory but still have overdue invoices
 -- Update the contract to ended and check if the student still appears in the overdue debtors view
@@ -52,16 +51,8 @@ UPDATE contracts
 SET status = 'active', end_date = NULL WHERE student_id = 1;
 -- Result: The student should appear again in the overdue debtors view for March 2026 since their contract is active again and the invoice is still unpaid
 SELECT * FROM vw_overdue_debtors WHERE student_id = 1;
-=======
--- RUN TESTS
 
-SET FOREIGN_KEY_CHECKS = 0;
-
-TRUNCATE TABLE contracts;
-TRUNCATE TABLE students;
-TRUNCATE TABLE rooms;
-
-SET FOREIGN_KEY_CHECKS = 1;
+-- Part 3: Mock data for testing procedures related to room occupancy and contract management
 
 INSERT INTO students (student_id, student_code, last_name, first_name, email)
 VALUES 
@@ -123,4 +114,4 @@ VALUES (5, 103, CURDATE(), 'active');
 
 -- Test: Room is full or exceeds capacity
 CALL sp_transfer_room(1, 103);
->>>>>>> origin/develop
+
