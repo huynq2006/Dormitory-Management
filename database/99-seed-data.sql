@@ -54,36 +54,36 @@ SELECT * FROM vw_overdue_debtors WHERE student_id = 1;
 
 -- Part 3: Mock data for testing procedures related to room occupancy and contract management
 
-INSERT INTO students (student_id, student_code, last_name, first_name, email)
+INSERT IGNORE INTO students (student_id, student_code, last_name, first_name, email)
 VALUES 
 (1, 'SV001', 'Nguyen', 'Van A', 'a@gmail.com'),
 (2, 'SV002', 'Nguyen', 'Van B', 'b@gmail.com'),
 (3, 'SV003', 'Nguyen', 'Van C', 'c@gmail.com'),
 (5, 'SV005', 'Nguyen', 'Van E', 'e@gmail.com');
 
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
+INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
 VALUES (101, 2, 0, 0.00, 'available');
 
 -- Add 1 people
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (1, 101, CURDATE(), 'active');
 
 -- Full 2 people
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (2, 101, CURDATE(), 'active');
 
 -- Invalid (occupancy > capacity, room full)
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (3, 101, CURDATE(), 'active');
 
 SELECT * FROM rooms;
 
 -- Test active contact
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
+INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
 VALUES (102, 2, 0, 0.00, 'available');
 
 -- Test result: student already has an active account
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (1, 102, CURDATE(), 'active');
 
 -- Terminate/end contract
@@ -95,23 +95,55 @@ WHERE student_id = 2 AND room_id = 101 AND status = 'active';
 SELECT * FROM rooms;
 
 -- Valid add
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (3, 101, CURDATE(), 'active');
 
 -- Test Procedure sp_transfer_rooms (2.5 constraint)
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, r_status)
+INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
 VALUES (103, 2, 0, 0.00, 'available');
 
 UPDATE contracts
 SET status = 'ended'
 WHERE student_id = 1 AND room_id = 101 AND status = 'active';
 
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (3, 103, CURDATE(), 'active');
 
-INSERT INTO contracts (student_id, room_id, start_date, status)
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
 VALUES (5, 103, CURDATE(), 'active');
 
 -- Test: Room is full or exceeds capacity
 CALL sp_transfer_room(1, 103);
+
+-- Part 4: Testing Triggers for Room Occupancy and Audit Log --
+
+-- 1: Initial state: Check current occupancy of room 1
+SELECT room_id, current_occupancy FROM rooms WHERE room_id = 1;
+
+-- 2: TEST INSERT - Add a new active contract for student 2 in room 1
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status) 
+VALUES (2, 1, CURDATE(), 'active');
+
+-- Expected result: current_occupancy of room 1 should increase by 1
+SELECT room_id, current_occupancy AS 'After Insert' FROM rooms WHERE room_id = 1;
+
+-- 3: TEST UPDATE (ACTIVATE) - Add a new contract for student 3 in room 1 with pending status, then update to active'
+INSERT IGNORE INTO contracts (student_id, room_id, start_date, status) 
+VALUES (3, 1, CURDATE(), 'pending');
+
+UPDATE contracts SET status = 'active' WHERE student_id = 3 AND room_id = 1;
+
+-- Expected result: current_occupancy of room 1 should increase by 1 again (total +2 from initial)
+SELECT room_id, current_occupancy AS 'After Activate' FROM rooms WHERE room_id = 1;
+
+-- 4: TEST UPDATE (DEACTIVATE) - End the contract for student 2 and check occupancy
+UPDATE contracts SET status = 'ended', end_date = CURDATE() 
+WHERE student_id = 2 AND room_id = 1;
+
+-- Expected result: current_occupancy of room 1 should decrease by 1
+SELECT room_id, current_occupancy AS 'After End' FROM rooms WHERE room_id = 1;
+
+-- 5: Check the Audit Log to see if the actions are recorded
+SELECT * FROM audit_log ORDER BY log_time DESC LIMIT 5;
+
 
