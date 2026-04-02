@@ -134,7 +134,15 @@ Nếu bị conflict tại file 04_transactions.sql:
 
 Commit lại.
 
-## 5. Final
+## 5. General checklist for Dev and Tester
+Task được tính là (tạm thời) hoàn thành khi:
+
+- Dev đã tạo PR đúng Template.
+- Dev đã gọi Copilot review code & tự check, tự sửa lỗi (nếu phù hợp).
+- Tester đã review code, pull về chạy thử & check lại lần 2.
+- Dev & Tester đã viết đủ report.
+
+## 6. Final
 Khi develop đã tích hợp đủ tính năng và chạy Docker trơn tru:
 
 ```Bash
