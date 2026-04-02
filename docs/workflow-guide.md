@@ -74,8 +74,22 @@ git commit -m "feat(procedure): add sp_create_invoice for billing"
 git push -u origin feature/tao-hoa-don
 ```
 
-## 4. Quy trình PR
-### 4.1. Update branch
+## 4. Quy trình chung: 
+**Bước 1**: Dev push code + tự tạo PR + tự request Copilot AI → AI gợi ý sửa (xem xét, nếu đúng và hợp lý thì sửa).
+
+**Bước 2**: Tester vào PR + check lỗi và comment trực tiếp vào phần code đó (chỉ comment lỗi + cách sửa).
+
+**Bước 3**: Dev vào PR check lại sau kiểm thử: đúng thì sửa, sai thì comment (không sửa theo, chờ PM check final). 
+
+```markdown
+Đánh dấu `resolve` với lỗi hợp lý, đã sửa lỗi. 
+Những lỗi có vấn đề tuyệt đối không sửa theo và không bấm `resolve`.
+```
+
+**Bước 4**: Check final.
+
+## 5. Quy trình PR
+### 5.1. Update branch
 Để tránh conflict, hãy kéo code mới nhất từ develop về nhánh của bạn:
 
 ```Bash
@@ -84,7 +98,7 @@ git merge develop
 # (Lưu ý: Dùng merge).
 ```
 
-### 4.2. Review
+### 5.2. Review
 
 Quy trình review gồm **2 bước**:
 
@@ -123,7 +137,7 @@ Nếu ổn:
 
 **Chỉ trưởng nhóm được phép merge.**
 
-### 4.3. Conflict
+### 5.3. Conflict
 Nếu bị conflict tại file 04_transactions.sql:
 
 - KHÔNG cố gắng ngồi xóa các dấu <<<< HEAD bằng tay nếu không hiểu rõ.
@@ -134,7 +148,15 @@ Nếu bị conflict tại file 04_transactions.sql:
 
 Commit lại.
 
-## 5. Final
+## 6. General checklist for Dev and Tester
+Task được tính là (tạm thời) hoàn thành khi:
+
+- Dev đã tạo PR đúng Template.
+- Dev đã gọi Copilot review code & tự check, tự sửa lỗi (nếu phù hợp).
+- Tester đã review code, pull về chạy thử & check lại lần 2.
+- Dev & Tester đã viết đủ report.
+
+## 7. Final
 Khi develop đã tích hợp đủ tính năng và chạy Docker trơn tru:
 
 ```Bash
