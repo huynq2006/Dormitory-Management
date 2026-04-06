@@ -28,16 +28,16 @@ VALUES
 
 INSERT INTO rooms (capacity, current_occupancy, base_price, status)
 VALUES
-  (4, 2, 1500000.00, 'available'), -- room_id=1: phòng nhiều người (SV001 + SV008)
-  (2, 1, 1200000.00, 'available'), -- room_id=2: SV002 đã paid
-  (2, 1, 1200000.00, 'available'), -- room_id=3: SV003 inactive
-  (2, 1, 1000000.00, 'available'), -- room_id=4: SV004 chưa tới due_date
-  (2, 1, 1000000.00, 'available'), -- room_id=5: SV005 contract cancelled
-  (2, 1, 1000000.00, 'available'), -- room_id=6: SV006 contract ended trước tháng invoice
-  (2, 1, 1300000.00, 'available'), -- room_id=7: SV007 status='overdue'
-  (2, 1, 1100000.00, 'available'), -- room_id=8: SV009 due_date hôm nay
-  (2, 1, 1000000.00, 'available'), -- room_id=9: case 9
-  (2, 1, 1200000.00, 'available'); -- room_id=10: case 10
+  (4, 0, 1500000.00, 'available'), -- room_id=1: phòng nhiều người (SV001 + SV008)
+  (2, 0, 1200000.00, 'available'), -- room_id=2: SV002 đã paid
+  (2, 0, 1200000.00, 'available'), -- room_id=3: SV003 inactive
+  (2, 0, 1000000.00, 'available'), -- room_id=4: SV004 chưa tới due_date
+  (2, 0, 1000000.00, 'available'), -- room_id=5: SV005 contract cancelled
+  (2, 0, 1000000.00, 'available'), -- room_id=6: SV006 contract ended trước tháng invoice
+  (2, 0, 1300000.00, 'available'), -- room_id=7: SV007 status='overdue'
+  (2, 0, 1100000.00, 'available'), -- room_id=8: SV009 due_date hôm nay
+  (2, 0, 1000000.00, 'available'), -- room_id=9: case 9
+  (2, 0, 1200000.00, 'available'); -- room_id=10: case 10
 
 INSERT INTO contracts (student_id, room_id, start_date, end_date, status)
 VALUES
