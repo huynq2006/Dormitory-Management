@@ -21,7 +21,10 @@ VALUES
   ('SV006', 'Phuc',  'Vo',     'M', 'phuc@test.com',  1), -- active, contract đã ended trước tháng invoice
   ('SV007', 'Giang', 'Do',     'F', 'giang@test.com', 1), -- active, paid_status='overdue'
   ('SV008', 'Hung',  'Bui',    'M', 'hung@test.com',  1), -- phòng nhiều người, cùng phòng SV001
-  ('SV009', 'Lan',   'Ngo',    'F', 'lan@test.com',   1); -- active, due_date đúng hôm nay (edge)
+  ('SV009', 'Lan',   'Ngo',    'F', 'lan@test.com',   1), -- active, due_date đúng hôm nay (edge)
+  ('SV010', 'Khanh', 'Dinh', 'M', 'khanh@test.com', 1), -- contract ended giữa tháng
+  ('SV011', 'Linh',  'Phan', 'F', 'linh@test.com',  1), -- rời giữa tháng
+  ('SV012', 'Minh',  'Tran', 'M', 'minh@test.com',  1); -- vào giữa tháng
 
 INSERT INTO rooms (capacity, current_occupancy, base_price, status)
 VALUES
@@ -32,7 +35,9 @@ VALUES
   (2, 1, 1000000.00, 'available'), -- room_id=5: SV005 contract cancelled
   (2, 1, 1000000.00, 'available'), -- room_id=6: SV006 contract ended trước tháng invoice
   (2, 1, 1300000.00, 'available'), -- room_id=7: SV007 status='overdue'
-  (2, 1, 1100000.00, 'available'); -- room_id=8: SV009 due_date hôm nay
+  (2, 1, 1100000.00, 'available'), -- room_id=8: SV009 due_date hôm nay
+  (2, 1, 1000000.00, 'available'), -- room_id=9: case 9
+  (2, 1, 1200000.00, 'available'); -- room_id=10: case 10
 
 INSERT INTO contracts (student_id, room_id, start_date, end_date, status)
 VALUES
@@ -47,12 +52,17 @@ VALUES
   (4, 4, '2026-01-01', NULL,  'active'),
   -- Phòng 5: contract cancelled
   (5, 5, '2026-01-01', NULL, 'cancelled'),
-  -- Phòng 6: contract ended TRƯỚC tháng invoice (2026-01)
-  (6, 6, '2025-01-01', '2025-12-31', 'ended'),
+  -- Phòng 6: contract ended trong tháng invoice 
+  (6, 6, '2026-01-01', '2026-02-20', 'ended'),
   -- Phòng 7: overdue
   (7, 7, '2026-01-01', NULL, 'active'),
   -- Phòng 8: due_date đúng hôm nay
-  (9, 8, '2026-01-01', NULL, 'active');
+  (9, 8, '2026-01-01', NULL, 'active'),
+  -- Phòng 9: hợp đồng end vào giữa tháng
+  (10, 9, '2026-01-01', '2026-02-15', 'ended'),
+  -- Phòng 10: 2 sinh viên ở chung 1 phòng (A rời giữa tháng, B vào giữa tháng)
+ (11, 10, '2026-01-01', '2026-02-15', 'ended'), -- Sinh viên rời
+ (12, 10, '2026-02-16', NULL, 'active'); -- Sinh viên vào
 
 INSERT INTO invoices (room_id, month, room_fee, electric_fee, water_fee, total_amount, due_date, paid_status)
 VALUES
@@ -71,14 +81,22 @@ VALUES
   -- CASE 5: contract cancelled → không hiện
   (5, '2026-02-01', 1000000,  60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
 
-  -- CASE 6: contract ended TRƯỚC tháng invoice → không hiện
-  (6, '2026-02-01', 1000000,  60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
+  -- CASE 6: contract ended trong tháng invoice → không hiện
+  (6,  '2026-02-01', 1000000, 60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
 
   -- CASE 7: paid_status='overdue' → vẫn hiện
   (7, '2026-02-01', 1300000,  90000, 45000, 1435000.00, '2026-03-01', 'overdue'),
 
   -- 	CASE 8: due_date đúng hôm nay (CURDATE()) → không hiện vì điều kiện là < CURDATE()
-  (8, '2026-03-01', 1100000,  70000, 35000, 1205000.00, CURDATE(), 'unpaid');
+  (8, '2026-03-01', 1100000,  70000, 35000, 1205000.00, CURDATE(), 'unpaid'),
+  
+  -- CASE 9: Contract ended giữa tháng
+  (9,  '2026-02-01', 1000000, 60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
+  
+  -- CASE 10: 2 sinh viên ở cùng phòng trong 1 tháng (A rời giữa tháng, B vào giữa tháng )
+  (10, '2026-02-01', 1200000, 80000, 40000, 1320000.00, '2026-03-05', 'unpaid');
+
+  
 -- Xem view
 SELECT * FROM vw_overdue_debtors;
 
@@ -104,7 +122,7 @@ SELECT * FROM vw_overdue_debtors WHERE room_id = 4;
 SELECT * FROM vw_overdue_debtors WHERE room_id = 5;
 -- Expected: 0 rows
 
--- CASE 6: Contract ended trước tháng invoice → 0 rows
+-- CASE 6: Contract ended trong tháng invoice → 0 rows
 SELECT * FROM vw_overdue_debtors WHERE room_id = 6;
 -- Expected: 0 rows
 
@@ -116,6 +134,17 @@ SELECT * FROM vw_overdue_debtors WHERE room_id = 7;
 SELECT * FROM vw_overdue_debtors WHERE room_id = 8;
 -- Expected: 0 rows
 
--- Tổng số rows toàn view đúng 3
+-- CASE 9: Contract ended giữa tháng
+SELECT * FROM vw_overdue_debtors WHERE room_id = 9;
+-- Expected: 0 rows
+-- Lý do: contract ended trước LAST_DAY(2026-02) = 28/02 → không còn active cuối tháng
+
+-- CASE 10: 2 sinh viên ở cùng phòng trong 1 tháng (A rời giữa tháng, B vào giữa tháng )
+SELECT * FROM vw_overdue_debtors WHERE room_id = 10;
+-- Expected: 1 row — chỉ Student B
+-- Lý do: chỉ B còn active vào LAST_DAY(2026-02) = 28/02
+--        A đã ended 15/02 → bị loại → không trùng dòng
+
+
 SELECT COUNT(*) AS total FROM vw_overdue_debtors;
--- Expected: 3
+-- Expected: 4

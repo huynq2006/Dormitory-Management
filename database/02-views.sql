@@ -7,18 +7,16 @@ SELECT
     CONCAT(s.first_name, ' ', s.last_name) AS student_name,
     r.room_id,
     i.month,
-    i.total_amount                          AS debt_amount,
+    i.total_amount AS debt_amount,
     i.due_date,
-    DATEDIFF(CURDATE(), i.due_date)         AS days_overdue
+    DATEDIFF(CURDATE(), i.due_date) AS days_overdue
 FROM invoices i
 JOIN rooms r     ON r.room_id = i.room_id
 JOIN contracts c ON c.room_id = r.room_id
-                AND c.status != 'cancelled'
-                AND c.start_date <= LAST_DAY(i.month)
-                AND (c.end_date IS NULL OR c.end_date >= i.month)
+                AND c.status = 'active' -- chỉ lấy contract đang active
+                AND c.start_date <= LAST_DAY(i.month) -- bắt đầu trước cuối tháng
+                AND (c.end_date IS NULL OR c.end_date >= LAST_DAY(i.month)) -- còn hiệu lực cuối tháng
 JOIN students s  ON s.student_id = c.student_id
                 AND s.status = 1
 WHERE i.paid_status IN ('unpaid', 'overdue')
   AND i.due_date < CURDATE();
-
--- Khi query: SELECT * FROM vw_overdue_debtors ORDER BY days_overdue DESC;
