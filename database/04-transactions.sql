@@ -71,9 +71,6 @@ BEGIN
     INSERT INTO contracts (student_id, room_id, start_date, status) 
     VALUES (p_student_id, p_new_room_id, CURRENT_DATE, 'active');
 
-    INSERT INTO audit_log (log_time, actor, action, detail, error_code)
-    VALUES (NOW(), 'sp_transfer_room', 'TRANSFER_ROOM', CONCAT('Transferred student ', p_student_id, ' to room ', p_new_room_id), NULL);
-
     COMMIT;
 END //
 
