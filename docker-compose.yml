@@ -10,6 +10,8 @@ services:
       - "13306:3306"
     env_file:
       - .env
+    networks:
+      - internal_db_net
     volumes:
       - ./database:/docker-entrypoint-initdb.d
       - ./database/migrations:/migrations
@@ -28,8 +30,26 @@ services:
       - .env
     depends_on:
       - mysql-master
+    networks:
+      - internal_db_net
     volumes:
       - slave-data:/var/lib/mysql
+  backend:
+    build: ./backend
+    container_name: python-backend
+    depends_on:
+      - mysql-master
+      - mysql-slave
+    env_file:
+      - .env
+    networks:
+      - internal_db_net
+    volumes:
+      - ./backend:/app
 volumes:
   master-data:
   slave-data:
+
+networks:
+  internal_db_net:
+    driver: bridge
