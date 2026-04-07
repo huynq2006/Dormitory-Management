@@ -12,7 +12,7 @@ This project focuses on building and optimizing a relational database for a Dorm
 * **ACID Transactions (`sp_transfer_room`):** Ensures safe student room transfers with automatic `ROLLBACK` mechanisms to prevent overbooking and maintain data integrity.
 * **Automated Batch Processing:** Utilizes Stored Procedures and Event Schedulers to automatically calculate and generate monthly utility and room invoices.
 * **High Availability & Performance:** Implements a **Master-Slave Replication** architecture for Read/Write splitting (writes to Master, reads from Slave), coupled with strategic Indexing (`EXPLAIN` benchmarked) to optimize heavy queries like overdue debt reporting.
-
+* **Monthly Contract Boundary:** All contract changes (room transfers, terminations, cancellations) take effect only at the end of the month. During the month, students are not allowed to change rooms immediately; all changes will be applied on the month-end closing date (after invoices are generated).
 ### 🛠️ Tech Stack
 * **DBMS:** MySQL 8 (InnoDB Engine)
 * **Infrastructure:** Docker & Docker Compose (Master/Slave nodes)
@@ -28,7 +28,7 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 * **Transaction & ACID (`sp_transfer_room`):** Xử lý nghiệp vụ chuyển phòng an toàn, sử dụng cơ chế khóa dòng (Row-level lock) và tự động `ROLLBACK` khi phòng đầy để tránh tình trạng "ngủ ngoài đường" trên hệ thống.
 * **Tự động hóa hóa đơn:** Sử dụng Stored Procedure kết hợp Event Scheduler để tính toán và chốt hóa đơn điện/nước/phòng hàng loạt một cách tự động mỗi cuối tháng.
 * **Hiệu năng & Khả năng mở rộng:** Triển khai kiến trúc **Master-Slave Replication** để tách biệt luồng Đọc/Ghi (Ghi vào Master, Đọc từ Slave). Kết hợp đánh Index chiến lược và dùng lệnh `EXPLAIN` để tối ưu hóa các truy vấn nặng như xem danh sách nợ quá hạn.
-
+* **Ràng buộc cuối tháng:** Sinh viên không được chuyển phòng giữa tháng. Mọi thay đổi hợp đồng (chuyển phòng, kết thúc hợp đồng, hủy) chỉ có hiệu lực vào ngày cuối tháng sau khi hệ thống chốt toàn bộ hóa đơn tháng đó.
 ### 🛠️ Công nghệ sử dụng
 * **Hệ quản trị CSDL:** MySQL 8 (Engine InnoDB)
 * **Hạ tầng:** Docker & Docker Compose (Triển khai cụm Master/Slave)
