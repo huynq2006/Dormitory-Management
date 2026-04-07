@@ -1,7 +1,9 @@
 services:
   # Master Database Server
   mysql-master:
-    image: mysql:8.0
+    build:
+        context: .
+        dockerfile: ./dockerfiles/Dockerfile.master
     container_name: mysql-master
     restart: always
     ports:
@@ -9,14 +11,15 @@ services:
     env_file:
       - .env
     volumes:
-      - ./mysql-config/master.cnf:/etc/mysql/conf.d/master.cnf
       - ./database:/docker-entrypoint-initdb.d
       - ./database/migrations:/migrations
       - master-data:/var/lib/mysql
 
   # Slave Database Server
   mysql-slave:
-    image: mysql:8.0
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.slave
     container_name: mysql-slave
     restart: always
     ports:
@@ -26,7 +29,6 @@ services:
     depends_on:
       - mysql-master
     volumes:
-      - ./mysql-config/slave.cnf:/etc/mysql/conf.d/slave.cnf
       - slave-data:/var/lib/mysql
 volumes:
   master-data:
