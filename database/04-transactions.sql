@@ -1,4 +1,4 @@
-DELIMITER $$
+DELIMITER //
 
 DROP PROCEDURE IF EXISTS sp_transfer_room $$
 
@@ -13,14 +13,17 @@ BEGIN
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
 
+    DECLARE v_sqlstate CHAR(5); 
+    DECLARE v_errmsg TEXT;
+
     DECLARE EXIT HANDLER FOR SQLEXCEPTION 
     BEGIN
-        GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errmsg = MESSAGE_TEXT;
+        GET DIAGNOSTICS CONDITION 1 v_sqlstate = RETURNED_SQLSTATE, v_errmsg = MESSAGE_TEXT;
 
         ROLLBACK TO SAVEPOINT sp_start_transfer;
 
         INSERT INTO audit_log (log_time, actor, action, detail, error_code)
-        VALUES (NOW(), 'sp_transfer_room', 'ERROR', @errmsg, @sqlstate);
+        VALUES (NOW(), 'sp_transfer_room', 'ERROR', v_errmsg, v_sqlstate);
 
         COMMIT;
         
@@ -36,6 +39,7 @@ BEGIN
     FROM contracts
     WHERE student_id = p_student_id AND status = 'active'
     LIMIT 1;
+    FOR UPDATE;
 
     IF v_old_contract_id IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student has no active contract';
@@ -71,6 +75,6 @@ BEGIN
     VALUES (NOW(), 'sp_transfer_room', 'TRANSFER_ROOM', CONCAT('Transferred student ', p_student_id, ' to room ', p_new_room_id), NULL);
 
     COMMIT;
-END $$
+END //
 
 DELIMITER ;
