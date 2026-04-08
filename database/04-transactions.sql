@@ -1,6 +1,6 @@
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS sp_transfer_room $$
+DROP PROCEDURE IF EXISTS sp_transfer_room //
 
 CREATE PROCEDURE sp_transfer_room(
     IN p_student_id INT,
@@ -12,6 +12,7 @@ BEGIN
     DECLARE v_room_status VARCHAR(20);
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
+    DECLARE v_end_date DATE;
 
     DECLARE v_sqlstate CHAR(5); 
     DECLARE v_errmsg TEXT;
@@ -22,8 +23,7 @@ BEGIN
 
         ROLLBACK TO SAVEPOINT sp_start_transfer;
 
-        INSERT INTO audit_log (log_time, actor, action, detail, error_code)
-        VALUES (NOW(), 'sp_transfer_room', 'ERROR', v_errmsg, v_sqlstate);
+        CALL sp_add_audit_log(USER(), 'sp_transfer_room', v_errmsg, v_sqlstate);
 
         COMMIT;
         
@@ -35,10 +35,10 @@ BEGIN
     SAVEPOINT sp_start_transfer;
 
     -- Select current active contract for the student
-    SELECT contract_id, room_id INTO v_old_contract_id, v_old_room_id
+    SELECT contract_id, room_id, end_date INTO v_old_contract_id, v_old_room_id, v_end_date
     FROM contracts
     WHERE student_id = p_student_id AND status = 'active'
-    LIMIT 1;
+    LIMIT 1
     FOR UPDATE;
 
     IF v_old_contract_id IS NULL THEN
@@ -65,11 +65,20 @@ BEGIN
     END IF;
 
     -- End old contract and create new one
-    UPDATE contracts SET status = 'ended', end_date = CURRENT_DATE 
+    UPDATE contracts 
+    SET status = 'ended', 
+        end_date = IF(v_end_date < CURDATE(), v_end_date, CURDATE())
     WHERE contract_id = v_old_contract_id;
 
     INSERT INTO contracts (student_id, room_id, start_date, status) 
     VALUES (p_student_id, p_new_room_id, CURRENT_DATE, 'active');
+
+    CALL sp_add_audit_log(
+        USER(), 
+        'TRANSFER_ROOM', 
+        CONCAT('Successfully transferred student ', p_student_id, ' from room ', v_old_room_id, ' to room ', p_new_room_id), 
+        NULL
+    );
 
     COMMIT;
 END //
