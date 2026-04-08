@@ -37,11 +37,14 @@ Lý do:
 - Dễ so sánh, join, filter theo range
 
 ### 0.5 Ràng buộc nghiệp vụ cấp hệ thống (Business Rules)
-BR-01: Một `room` không được có `current_occupancy > capacity`  
-BR-02: Một `student` **tối đa 1** `contract` có `status='active'` tại một thời điểm  
-BR-03: Một `room` có thể có nhiều hợp đồng theo thời gian, nhưng cùng thời điểm không vượt capacity  
-BR-04: Mỗi phòng mỗi tháng chỉ có tối đa 1 bản ghi `meter_readings`  
-BR-05: Mỗi phòng mỗi tháng chỉ có tối đa 1 `invoice` (hoặc 1 invoice/contract/tháng nếu chọn gắn theo contract)
+- BR-01: Một `room` không được có `current_occupancy > capacity`  
+- BR-02: Một `student` **tối đa 1** `contract` có `status='active'` tại một thời điểm  
+- BR-03: Một `room` có thể có nhiều hợp đồng theo thời gian, nhưng cùng thời điểm không vượt capacity  
+- BR-04: Mỗi phòng mỗi tháng chỉ có tối đa 1 bản ghi `meter_readings`  
+- BR-05: Mỗi phòng mỗi tháng chỉ có tối đa 1 `invoice` (hoặc 1 invoice/contract/tháng nếu chọn gắn theo contract)
+- BR-06: Thay đổi hợp đồng chỉ có hiệu lực cuối tháng  
+  - Sinh viên không được phép "chuyển phòng giữa tháng".  
+  - Mọi thay đổi trạng thái `contracts.status` (active → ended/cancelled) và mọi hợp đồng mới (`INSERT`) đều được coi là có hiệu lực tại ngày cuối tháng (LAST_DAY) của tháng hiện tại hoặc tháng được cấu hình.
 
 > Lưu ý: BR-02 trong MySQL khó enforce tuyệt đối bằng UNIQUE constraint nếu dùng ENUM/status.
 > Quyết định: enforce bằng **procedure/transaction** + index hỗ trợ.
@@ -126,7 +129,11 @@ Gắn student ↔ room theo thời gian.
 ### Business Rules
 - BR-02: Mỗi student tối đa 1 contract active. **(Enforce ở mức DB bằng Trigger BEFORE INSERT/UPDATE sử dụng SIGNAL SQLSTATE chặn insert sai logic)**.
 - Khi chuyển phòng: kết thúc contract active hiện tại (status='ended', end_date=CURDATE()) và tạo contract mới status='active' cho phòng mới trong cùng 1 transaction.
-
+- BR-06: Thay đổi phòng chỉ hiệu lực cuối tháng:
+  - Khi gọi `sp_transfer_room`, logic sẽ:
+    - Đánh dấu contract cũ kết thúc vào `LAST_DAY(p_effective_month)` (mặc định là tháng hiện tại).
+    - Tạo contract mới bắt đầu từ `LAST_DAY(p_effective_month) + 1 DAY` (ngày đầu tháng kế tiếp).
+  - Không có scenario chuyển phòng / kết thúc hợp đồng giữa tháng (theo ngày lẻ).
 ### Index/Constraints
 - `PRIMARY KEY (contract_id)`
 - `INDEX idx_contracts_student_status(student_id, status)`
@@ -236,7 +243,7 @@ Ghi log hoạt động procedure/transaction/trigger để phục vụ demo & de
 - Tiêu chí overdue cơ bản:
   - `paid_status='unpaid'` AND `due_date < CURRENT_DATE()`
   - hoặc update paid_status='overdue' bằng event/procedure (team chọn 1)
-
+- Follow theo BR-06
 ### 8.2 Procedure `sp_transfer_room(p_student_id, p_new_room_id)`
 - Input: student_id, new_room_id
 - Output: success/fail (có thể SIGNAL SQLSTATE)
