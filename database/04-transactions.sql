@@ -71,7 +71,7 @@ BEGIN
     WHERE contract_id = v_old_contract_id;
 
     INSERT INTO contracts (student_id, room_id, start_date, status) 
-    VALUES (p_student_id, p_new_room_id, CURRENT_DATE, 'active');
+    VALUES (p_student_id, p_new_room_id, CURDATE(), 'active');
 
     CALL sp_add_audit_log(
         USER(), 
