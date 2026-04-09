@@ -1,75 +1,112 @@
--- CONDITION TO CHECK A ROOM (EXISTS, CURRENT NUMBER OF OCCUPANTS)
--- CONDITION TO ENSURE A STUDENT RENTS ONLY ONE ROOM
+USE dormitory_management;
+
+DROP TRIGGER IF EXISTS trg_contracts_before_insert;
+DROP TRIGGER IF EXISTS trg_contracts_after_insert;
+DROP TRIGGER IF EXISTS trg_contracts_after_update;
+DROP TRIGGER IF EXISTS trg_contracts_after_delete;
 
 DELIMITER //
-
--- If a contract changes from 'active' to 'ended' or 'cancelled', decrease room occupancy
-CREATE TRIGGER trg_decrease_occupancy
-AFTER UPDATE ON contracts
-FOR EACH ROW
-BEGIN
-    IF OLD.status = 'active' AND NEW.status IN ('ended','cancelled') THEN
-        UPDATE rooms
-        SET current_occupancy = GREATEST(current_occupancy - 1, 0)
-        WHERE room_id = OLD.room_id;
-    END IF;
-END //
-
-DELIMITER ;
-
-DELIMITER //
-
-CREATE TRIGGER trg_before_insert_contract
+ -- 1. Trigger before insert on contracts
+CREATE TRIGGER trg_contracts_before_insert
 BEFORE INSERT ON contracts
 FOR EACH ROW
 BEGIN
-    DECLARE cur_occupance INT;
-    DECLARE cur_capacity INT;
-    DECLARE active_count INT;
-
--- Check if room exists + get capacity
-    SELECT capacity, current_occupancy
-    INTO cur_capacity, cur_occupance
+    DECLARE v_capacity      INT;
+    DECLARE v_occupancy     INT;
+    DECLARE v_room_status   VARCHAR(20);
+    DECLARE v_active_count  INT;
+ 
+    -- Check room exists + get info
+    SELECT capacity, current_occupancy, status
+    INTO v_capacity, v_occupancy, v_room_status
     FROM rooms
     WHERE room_id = NEW.room_id;
-
-    IF cur_capacity IS NULL THEN
+ 
+    IF v_capacity IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Room does not exist';
     END IF;
--- Check if room is full
-    IF cur_occupance >= cur_capacity THEN
-		SIGNAL SQLSTATE '45000'
+ 
+    -- Check room under maintenance
+    IF v_room_status = 'maintenance' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Room is under maintenance';
+    END IF;
+ 
+    -- Check BR-01: room full
+    IF NEW.status = 'active' AND v_occupancy >= v_capacity THEN
+        SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Room is full';
     END IF;
-
--- Check 1 active contract
-    SELECT COUNT(*) INTO active_count 
-    FROM contracts 
+ 
+    -- Check BR-02: student already has active contract
+    SELECT COUNT(*) INTO v_active_count
+    FROM contracts
     WHERE student_id = NEW.student_id AND status = 'active';
-
-    IF active_count >= 1 AND NEW.status = 'active' THEN
+ 
+    IF NEW.status = 'active' AND v_active_count >= 1 THEN
         SIGNAL SQLSTATE '45000'
-		SET MESSAGE_TEXT = 'Student already has an active contract';
+        SET MESSAGE_TEXT = 'Student already has an active contract';
     END IF;
-
 END //
 
-DELIMITER ;
-
--- CONDITION TO ADD ONE STUDENT TO ONE ROOM
-
-DELIMITER //
-
-CREATE TRIGGER update_occupancy
+-- 2. TRigger after insert on Contracts
+CREATE TRIGGER trg_contracts_after_insert
 AFTER INSERT ON contracts
 FOR EACH ROW
-BEGIN 
+BEGIN
     IF NEW.status = 'active' THEN
-	UPDATE rooms
-    SET current_occupancy = current_occupancy + 1 
-    WHERE room_id = NEW.room_id;
+        UPDATE rooms
+        SET current_occupancy = current_occupancy + 1,
+            status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
+        WHERE room_id = NEW.room_id;
     END IF;
+END //
+
+-- 2. Trigger after Update on contracts (support test case 2: new room is available, change room successfully. test case 6: update contract to end it, occupancy should decrease and room status should update)
+CREATE TRIGGER trg_contracts_after_update
+AFTER UPDATE ON contracts
+FOR EACH ROW
+BEGIN
+    -- case A: activate contract 
+    IF LOWER(OLD.status) <> 'active' AND LOWER(NEW.status) = 'active' THEN
+        UPDATE rooms 
+        SET current_occupancy = current_occupancy + 1,
+            status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
+        WHERE room_id = NEW.room_id;
+        CALL sp_add_audit_log(USER(), 'ACTIVATE_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' activated'), 'SUCCESS');
+    
+    -- case B: end contract (Always set to available)
+    ELSEIF LOWER(OLD.status) = 'active' AND LOWER(NEW.status) IN ('ended', 'cancelled') THEN
+        UPDATE rooms 
+        SET current_occupancy = GREATEST(current_occupancy - 1, 0),
+            status = Case
+               when status = 'maintenance' then 'maintenance'
+               when GREATEST(current_occupancy -1, 0) >= capacity then 'full'
+               else 'available'
+			end
+        WHERE room_id = OLD.room_id;
+        CALL sp_add_audit_log(USER(), 'DEACTIVATE_CONTRACT', CONCAT('Contract ', OLD.contract_id, ' ended'), 'SUCCESS');
+   END IF;
+END //
+
+-- 3. Trigger after DELETE on contracts (Test Case 6 - incorrectly deleting a contract)
+CREATE TRIGGER trg_contracts_after_delete
+AFTER DELETE ON contracts
+FOR EACH ROW
+BEGIN
+    -- Only update occupancy if the deleted contract was active
+    IF LOWER(OLD.status) = 'active' THEN
+        UPDATE rooms 
+        SET current_occupancy = GREATEST(current_occupancy - 1, 0),
+        status = Case
+           when status = 'maintenance' then 'maintenance'
+           else 'available'
+           end
+        WHERE room_id = OLD.room_id;    
+
+        call sp_add_audit_log(USER(), 'DELETE_CONTRACT', CONCAT('Active contract ', OLD.contract_id, ' deleted. Occupancy restored.'), 'WARNING');
+	end if;
 END //
 
 DELIMITER ;
