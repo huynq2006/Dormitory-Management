@@ -1,20 +1,12 @@
 import pymysql
 import os
 from dotenv import load_dotenv
+from dbConnection import get_connection
 
 load_dotenv()
 
 def transfer_student(student_id, new_room_id): 
-    db_pass = os.getenv('DB_PASSWORD')
-      
-    connection = pymysql.connect(
-        host='localhost',
-        user='root',
-        port=3306,
-        password=db_pass,
-        database='dormitory_management',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    connection = get_connection()
         
     try:
         with connection.cursor() as cursor:
@@ -40,9 +32,7 @@ def transfer_student(student_id, new_room_id):
             connection.rollback()
 
         print("Transfer failed")
-        print(f"Error code: {e.args[0]}")
-        print(f"Error message: {e.args[1]}")
-        # print(f"Chi tiết lỗi: {e}")
+        print(f"Error's detail: {e}")
 
     finally:
         if connection:   # check before close
