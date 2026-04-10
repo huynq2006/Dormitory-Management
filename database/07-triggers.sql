@@ -23,7 +23,8 @@ BEGIN
     SELECT capacity, current_occupancy, status
     INTO v_capacity, v_occupancy, v_room_status
     FROM rooms
-    WHERE room_id = NEW.room_id;
+    WHERE room_id = NEW.room_id
+    FOR UPDATE; -- Sử dụng để khóa dữ liệu khi có 1 sinh viên thực hiện đăng ký vào phòng, tránh tình trạng race condition
  
     IF v_not_found = 1 THEN
         SIGNAL SQLSTATE '45000'
