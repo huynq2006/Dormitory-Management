@@ -15,6 +15,9 @@ BEGIN
     DECLARE v_occupancy     INT;
     DECLARE v_room_status   VARCHAR(20);
     DECLARE v_active_count  INT;
+    DECLARE v_not_found     INT DEFAULT 0;
+
+     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_not_found = 1;
  
     -- Check room exists + get info
     SELECT capacity, current_occupancy, status
@@ -22,7 +25,7 @@ BEGIN
     FROM rooms
     WHERE room_id = NEW.room_id;
  
-    IF v_capacity IS NULL THEN
+    IF v_not_found = 1 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Room does not exist';
     END IF;
@@ -60,6 +63,7 @@ BEGIN
         SET current_occupancy = current_occupancy + 1,
             status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
         WHERE room_id = NEW.room_id;
+        call sp_audit_log(USER(), 'INSERT_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' inserted'), ' SUCCESS');
     END IF;
 END //
 
