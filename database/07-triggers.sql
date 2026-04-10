@@ -38,7 +38,7 @@ BEGIN
     END IF;
  
     -- Check BR-01: room full
-    IF NEW.status = 'active' AND v_occupancy >= v_capacity THEN
+    IF LOWER(NEW.status) = 'active' AND v_occupancy >= v_capacity THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Room is full';
     END IF;
@@ -48,7 +48,7 @@ BEGIN
     FROM contracts
     WHERE student_id = NEW.student_id AND status = 'active';
  
-    IF NEW.status = 'active' AND v_active_count >= 1 THEN
+    IF LOWER(NEW.status) = 'active' AND v_active_count >= 1 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Student already has an active contract';
     END IF;
@@ -59,7 +59,7 @@ CREATE TRIGGER trg_contracts_after_insert
 AFTER INSERT ON contracts
 FOR EACH ROW
 BEGIN
-    IF NEW.status = 'active' THEN
+    IF LOWER(NEW.status) = 'active' THEN
         UPDATE rooms
         SET current_occupancy = current_occupancy + 1,
             status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
