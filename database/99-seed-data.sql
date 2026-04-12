@@ -10,140 +10,143 @@ TRUNCATE TABLE rooms;
 TRUNCATE TABLE audit_log;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Part 2: Mock data for testing views of overdue debtors
--- Insert data
--- Insert a student, a room, a contract, and an unpaid invoice to test the view for overdue debtors
-INSERT IGNORE INTO students (student_id, student_code, first_name, last_name, gender, email) 
-VALUES (1, 'SV001', 'Nguyen Van', 'A', 'M', 'sv001@vnu.edu.vn');
+INSERT INTO students (student_code, first_name, last_name, gender, email, status)
+VALUES
+  ('SV001', 'An',    'Nguyen', 'M', 'an@test.com',    1), -- active, có nợ
+  ('SV002', 'Binh',  'Tran',   'F', 'binh@test.com',  1), -- active, đã paid
+  ('SV003', 'Cam',   'Le',     'F', 'cam@test.com',   0), -- inactive, không hiện dù có nợ
+  ('SV004', 'Dung',  'Pham',   'M', 'dung@test.com',  1), -- active, invoice chưa tới due_date
+  ('SV005', 'Em',    'Hoang',  'F', 'em@test.com',    1), -- active, contract cancelled
+  ('SV006', 'Phuc',  'Vo',     'M', 'phuc@test.com',  1), -- active, contract đã ended trước tháng invoice
+  ('SV007', 'Giang', 'Do',     'F', 'giang@test.com', 1), -- active, paid_status='overdue'
+  ('SV008', 'Hung',  'Bui',    'M', 'hung@test.com',  1), -- phòng nhiều người, cùng phòng SV001
+  ('SV009', 'Lan',   'Ngo',    'F', 'lan@test.com',   1), -- active, due_date đúng hôm nay (edge)
+  ('SV010', 'Khanh', 'Dinh', 'M', 'khanh@test.com', 1), -- contract ended LAST_DAY tháng invoice → hiện ra
+  ('SV011', 'Linh',  'Phan', 'F', 'linh@test.com',  1), -- ended cuối tháng 1 → không hiện tháng 2
+  ('SV012', 'Minh',  'Tran', 'M', 'minh@test.com',  1); -- bắt đầu đầu tháng 2 → hiện ra
 
-INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status) 
-VALUES (1, 4, 0, 500000.00, 'available');
+INSERT INTO rooms (capacity, current_occupancy, base_price, status)
+VALUES
+  (4, 0, 1500000.00, 'available'), -- room_id=1: phòng nhiều người (SV001 + SV008)
+  (2, 0, 1200000.00, 'available'), -- room_id=2: SV002 đã paid
+  (2, 0, 1200000.00, 'available'), -- room_id=3: SV003 inactive
+  (2, 0, 1000000.00, 'available'), -- room_id=4: SV004 chưa tới due_date
+  (2, 0, 1000000.00, 'available'), -- room_id=5: SV005 contract cancelled
+  (2, 0, 1000000.00, 'available'), -- room_id=6: SV006 contract ended cuối tháng 1 (trước tháng invoice 2)
+  (2, 0, 1300000.00, 'available'), -- room_id=7: SV007 status='overdue'
+  (2, 0, 1100000.00, 'available'), -- room_id=8: SV009 due_date hôm nay
+  (2, 0, 1000000.00, 'available'), -- room_id=9: case 9
+  (2, 0, 1200000.00, 'available'); -- room_id=10: case 10
 
-INSERT INTO contracts (student_id, room_id, start_date, status) 
-VALUES (1, 1, '2026-03-01', 'active');
+INSERT INTO contracts (student_id, room_id, start_date, end_date, status)
+VALUES
+  -- Phòng 1: 2 sinh viên active cùng phòng
+  (1, 1, '2026-01-01', NULL, 'active'),
+  (8, 1, '2026-01-01', NULL, 'active'),
+  -- Phòng 2: paid
+  (2, 2, '2026-01-01', NULL, 'active'),
+  -- Phòng 3: SV003 inactive
+  (3, 3, '2026-01-01', NULL, 'active'),
+  -- Phòng 4: chưa tới due_date
+  (4, 4, '2026-01-01', NULL,  'active'),
+  -- Phòng 5: contract cancelled
+  (5, 5, '2026-01-01', NULL, 'cancelled'),
+  -- Phòng 6: contract ended cuối tháng 1 (trước tháng invoice 2) → không hiện
+  (6, 6, '2026-01-01', '2026-01-31', 'ended'),
+  -- Phòng 7: overdue
+  (7, 7, '2026-01-01', NULL, 'active'),
+  -- Phòng 8: due_date đúng hôm nay
+  (9, 8, '2026-01-01', NULL, 'active'),
+  -- Phòng 9: ended cuối tháng 2 → vẫn active cuối tháng → hiện ra
+  (10, 9, '2026-01-01', '2026-02-28', 'ended'),
+  -- Case 10: A ended cuối tháng 1, B bắt đầu đầu tháng 2
+(11, 10, '2026-01-01', '2026-01-31', 'ended'),
+(12, 10, '2026-02-01', NULL, 'active');
 
-INSERT INTO invoices (room_id, month, total_amount, due_date, paid_status) 
-VALUES (1, '2026-03-01', 650000.00, '2026-03-10', 'unpaid');
+INSERT INTO invoices (room_id, month, room_fee, electric_fee, water_fee, total_amount, due_date, paid_status)
+VALUES
+  -- CASE 1: Phòng nhiều người, unpaid, quá hạn → hiện cả SV001 và SV008
+  (1, '2026-02-01', 1500000, 100000, 50000, 1650000.00, '2026-03-10', 'unpaid'),
 
--- Test Views
+  -- CASE 2: Đã paid → không hiện
+  (2, '2026-02-01', 1200000,  80000, 40000, 1320000.00, '2026-03-05', 'paid'),
 
--- Case 1:Students left the dormitory but still have overdue invoices
--- Update the contract to ended and check if the student still appears in the overdue debtors view
-UPDATE contracts
-SET STATUS = 'ended', end_date = '2026-03-20' 
-WHERE student_id = 1;
--- Result: The student should still appear in the overdue debtors view for the month of 03/2026 since they had an active contract during that month and the invoice is unpaid
-SELECT * FROM vw_overdue_debtors WHERE student_id = 1;
+  -- CASE 3: SV003 inactive → không hiện dù invoice quá hạn
+  (3, '2026-02-01', 1200000,  80000, 40000, 1320000.00, '2026-03-05', 'unpaid'),
 
+  -- CASE 4: due_date chưa tới → không hiện
+  (4, '2026-03-01', 1000000,  60000, 30000, 1090000.00, '2026-04-30', 'unpaid'),
 
--- Case 2: New student added to the same room but with a later contract start date, should not appear in the overdue debtors view for the month of 03/2026
--- Add a new student and contract for the same room starting in April 2026, then check the overdue debtors view for March 2026
-INSERT INTO students (student_id, student_code, first_name, last_name, gender, email) 
-VALUES (4, 'SV004', 'Le Thi', 'D', 'F', 'sv004@vnu.edu.vn');
-INSERT INTO contracts (student_id, room_id, start_date, status) 
-VALUES (4, 1, '2026-04-01', 'active');
--- Result: The new student should not appear in the overdue debtors view for March 2026 since their contract starts in April
-SELECT * FROM vw_overdue_debtors WHERE room_id = 1 AND month = '2026-03-01';
+  -- CASE 5: contract cancelled → không hiện
+  (5, '2026-02-01', 1000000,  60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
 
+  -- CASE 6: contract ended cuối tháng 1 (trước tháng invoice 2) → không hiện
+  (6,  '2026-02-01', 1000000, 60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
 
--- Case 3: Update the contract back to active and check if the student appears again in the overdue debtors view
-UPDATE contracts 
-SET status = 'active', end_date = NULL WHERE student_id = 1;
--- Result: The student should appear again in the overdue debtors view for March 2026 since their contract is active again and the invoice is still unpaid
-SELECT * FROM vw_overdue_debtors WHERE student_id = 1;
+  -- CASE 7: paid_status='overdue' → vẫn hiện
+  (7, '2026-02-01', 1300000,  90000, 45000, 1435000.00, '2026-03-01', 'overdue'),
 
--- Part 3: Mock data for testing procedures related to room occupancy and contract management
+  -- 	CASE 8: due_date đúng hôm nay (CURDATE()) → không hiện vì điều kiện là < CURDATE()
+  (8, '2026-03-01', 1100000,  70000, 35000, 1205000.00, CURDATE(), 'unpaid'),
+  
+  -- CASE 9: Contract ended đúng LAST_DAY tháng invoice (2026-02-28) → vẫn active cuối tháng 2 → hiện ra
+  (9,  '2026-02-01', 1000000, 60000, 30000, 1090000.00, '2026-03-05', 'unpaid'),
+  
+  -- CASE 10:A ended cuối tháng 1, B bắt đầu đầu tháng 2 → vẫn hiện B vì còn active cuối tháng 2
+  -- chỉ B còn active vào LAST_DAY(2026-02) = 28/02
+  -- A đã ended 31/01 → không có contract tháng 2 → bị loại → không trùng dòng
+  (10, '2026-02-01', 1200000, 80000, 40000, 1320000.00, '2026-03-05', 'unpaid');
 
-INSERT IGNORE INTO students (student_id, student_code, last_name, first_name, email)
-VALUES 
-(1, 'SV001', 'Nguyen', 'Van A', 'a@gmail.com'),
-(2, 'SV002', 'Nguyen', 'Van B', 'b@gmail.com'),
-(3, 'SV003', 'Nguyen', 'Van C', 'c@gmail.com'),
-(5, 'SV005', 'Nguyen', 'Van E', 'e@gmail.com');
-
-INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
-VALUES (101, 2, 0, 0.00, 'available');
-
--- Add 1 people
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (1, 101, CURDATE(), 'active');
-
--- Full 2 people
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (2, 101, CURDATE(), 'active');
-
--- Invalid (occupancy > capacity, room full)
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (3, 101, CURDATE(), 'active');
-
-SELECT * FROM rooms;
-
--- Test active contact
-INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
-VALUES (102, 2, 0, 0.00, 'available');
-
--- Test result: student already has an active account
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (1, 102, CURDATE(), 'active');
-
--- Terminate/end contract
-UPDATE contracts
-SET status = 'ended'
-WHERE student_id = 2 AND room_id = 101 AND status = 'active';
-
--- Room 101 has only 1 person
-SELECT * FROM rooms;
-
--- Valid add
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (3, 101, CURDATE(), 'active');
-
--- Test Procedure sp_transfer_rooms (2.5 constraint)
-INSERT IGNORE INTO rooms (room_id, capacity, current_occupancy, base_price, status)
-VALUES (103, 2, 0, 0.00, 'available');
-
-UPDATE contracts
-SET status = 'ended'
-WHERE student_id = 1 AND room_id = 101 AND status = 'active';
-
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (3, 103, CURDATE(), 'active');
-
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status)
-VALUES (5, 103, CURDATE(), 'active');
-
--- Test: Room is full or exceeds capacity
-CALL sp_transfer_room(1, 103);
-
--- Part 4: Testing Triggers for Room Occupancy and Audit Log --
-
--- 1: Initial state: Check current occupancy of room 1
-SELECT room_id, current_occupancy FROM rooms WHERE room_id = 1;
-
--- 2: TEST INSERT - Add a new active contract for student 2 in room 1
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status) 
-VALUES (2, 1, CURDATE(), 'active');
-
--- Expected result: current_occupancy of room 1 should increase by 1
-SELECT room_id, current_occupancy AS 'After Insert' FROM rooms WHERE room_id = 1;
-
--- 3: TEST UPDATE (ACTIVATE) - Add a new contract for student 3 in room 1 with pending status, then update to active'
-INSERT IGNORE INTO contracts (student_id, room_id, start_date, status) 
-VALUES (3, 1, CURDATE(), 'pending');
-
-UPDATE contracts SET status = 'active' WHERE student_id = 3 AND room_id = 1;
-
--- Expected result: current_occupancy of room 1 should increase by 1 again (total +2 from initial)
-SELECT room_id, current_occupancy AS 'After Activate' FROM rooms WHERE room_id = 1;
-
--- 4: TEST UPDATE (DEACTIVATE) - End the contract for student 2 and check occupancy
-UPDATE contracts SET status = 'ended', end_date = CURDATE() 
-WHERE student_id = 2 AND room_id = 1;
-
--- Expected result: current_occupancy of room 1 should decrease by 1
-SELECT room_id, current_occupancy AS 'After End' FROM rooms WHERE room_id = 1;
-
--- 5: Check the Audit Log to see if the actions are recorded
-SELECT * FROM audit_log ORDER BY log_time DESC LIMIT 5;
+  
+-- Xem view
+SELECT * FROM vw_overdue_debtors;
 
 
+-- kiểm tra từng case lẻ
+-- CASE 1: Phòng nhiều người → phải ra đúng 2 rows, không thiếu không thừa
+SELECT * FROM vw_overdue_debtors WHERE room_id = 1;
+-- Expected: 2 rows (SV001 + SV008)
+
+-- CASE 2: Đã paid → 0 rows
+SELECT * FROM vw_overdue_debtors WHERE room_id = 2;
+-- Expected: 0 rows
+
+--  CASE 3: SV inactive → 0 rows dù invoice quá hạn
+SELECT * FROM vw_overdue_debtors WHERE room_id = 3;
+-- Expected: 0 rows
+
+-- CASE 4: Due date chưa tới → 0 rows
+SELECT * FROM vw_overdue_debtors WHERE room_id = 4;
+-- Expected: 0 rows
+
+-- CASE 5: Contract cancelled → 0 rows
+SELECT * FROM vw_overdue_debtors WHERE room_id = 5;
+-- Expected: 0 rows
+
+-- CASE 6: contract ended cuối tháng 1 (trước tháng invoice 2) → không hiện
+-- Lý do: end_date = 31/01 < LAST_DAY(2026-02) = 28/02 → không còn active cuối tháng → không hiện
+SELECT * FROM vw_overdue_debtors WHERE room_id = 6;
+-- Expected: 0 rows
+
+-- CASE 7: paid_status='overdue' → vẫn phải hiện
+SELECT * FROM vw_overdue_debtors WHERE room_id = 7;
+-- Expected: 1 row (SV007)
+
+-- CASE 8: Due date đúng hôm nay → 0 rows (boundary: < không phải <=)
+SELECT * FROM vw_overdue_debtors WHERE room_id = 8;
+-- Expected: 0 rows
+
+-- CASE 9: Contract ended đúng LAST_DAY tháng invoice (28/02) → vẫn hiện
+-- Expected: 1 row (SV010)
+-- Lý do: end_date = 28/02 = LAST_DAY(2026-02) → còn active cuối tháng → hiện ra
+SELECT * FROM vw_overdue_debtors WHERE room_id = 9;
+
+-- CASE 10: A ended cuối tháng 1, B bắt đầu đầu tháng 2 → vẫn hiện B vì còn active cuối tháng 2
+SELECT * FROM vw_overdue_debtors WHERE room_id = 10;
+-- Expected: 1 row — chỉ Student B
+-- Lý do: chỉ B còn active vào LAST_DAY(2026-02) = 28/02
+  -- A đã ended 31/01 → không có contract tháng 2 → bị loại → không trùng dòng
+
+
+SELECT COUNT(*) AS total FROM vw_overdue_debtors;
+-- Expected: 5 (Case 1: 2 rows + Case 7: 1 row + Case 9: 1 row + Case 10: 1 row)
