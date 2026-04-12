@@ -1,11 +1,24 @@
 from faker import Faker
+from faker.providers import BaseProvider
 from backend.db_connection import get_connection
 import random
 from datetime import date, timedelta
+from unidecode import unidecode
+
+class VietnameseNameProvider(BaseProvider):
+    def vn_first_name(self):
+        return random.choice(["Huy", "Linh", "Trang", "Minh"])
 
 fake = Faker('vi_VN')
+fake.add_provider(VietnameseNameProvider)
 connection = get_connection()
 cursor = connection.cursor()
+
+def normalize_name(name):
+    name = unidecode(name)
+    name = name.lower()
+    name = name.replace(" ", "")
+    return name
 
 def generated_students(n):
     students = []
@@ -16,21 +29,24 @@ def generated_students(n):
     
     for _ in range(n):
         
+        first_name = fake.vn_first_name()
+        last_name = fake.last_name()
+        
         data = {
             "student_code": random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
                 + f"{random.randint(0, 9999):04d}", # giữ đuôi
-            "first_name" : fake.first_name(),
-            "last_name" : fake.last_name(), 
+            "first_name" : first_name,
+            "last_name" : last_name,
             "gender" : fake.random_element(elements=('M', 'F', 'O')),
             "dob" : fake.date_of_birth(minimum_age=18, maximum_age=25),
-            "email": fake.unique.email(),
+            "email": normalize_name(first_name) + normalize_name(last_name) + "@gmail.com",
             "phone": fake.phone_number(),
             "status": 1        
         }
         students.append(data)
       
-    for i in students:   
-        print(i)
+    for student in students:   
+        print(student)
     print('\n')
     
     return students
@@ -53,8 +69,8 @@ def generated_rooms(n):
         }
         rooms.append(data)
     
-    for i in rooms:   
-        print(i)
+    for room in rooms:   
+        print(room)
     print('\n')
         
     return rooms
@@ -101,8 +117,8 @@ def generated_contracts(n, all_room_ids, all_student_ids):
             "status" : status
         }
         contracts.append(data)
-    for i in contracts:    
-        print(i)
+    for contract in contracts:    
+        print(contract)
     print('\n')
         
     return contracts
@@ -137,8 +153,8 @@ def generated_meter_readings(all_room_ids, months_back=3):
             }
             meter_readings.append(data)
     
-    for i in meter_readings:
-        print(i)
+    for meter_reading in meter_readings:
+        print(meter_reading)
     print('\n')
             
     return meter_readings
@@ -198,8 +214,8 @@ def generated_invoices(list_readings, list_rooms):
         }
         invoices.append(data)
     
-    for i in invoices:  
-        print(i)
+    for invoice in invoices:  
+        print(invoice)
     print('\n\n')   
     
     return invoices
