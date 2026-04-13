@@ -1,5 +1,5 @@
-DROP TRIGGER update_occupancy;
-DROP TRIGGER trg_decrease_occupancy;
+DROP TRIGGER IF EXISTS update_occupancy;
+DROP TRIGGER IF EXISTS trg_decrease_occupancy;
 -- Part 2: Test Trigger
 -- 1. Clean old data for testing triggers
 -- Phải xoá cái này để các Part 2, 3 không cộng dồn vào Part 4
