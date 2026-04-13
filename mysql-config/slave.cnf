@@ -1,0 +1,12 @@
+[mysqld]
+server-id = 2
+
+relay-log = mysql-relay-bin
+
+log_bin = mysql-bin
+binlog_do_db = dormitory_management
+
+gtid_mode = ON
+enforce_gtid_consistency = ON
+
+read_only = 1

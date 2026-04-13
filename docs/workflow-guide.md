@@ -27,6 +27,12 @@
 **Rule 4**: 1 Task = 1 Branch: 
 - Không làm nhiều tính năng trên cùng một nhánh.
 
+**Rule 5**: Nghiệp vụ chuyển phòng (`sp_transfer_room`) phải đảm bảo:
+  - Không cho phép chuyển phòng giữa tháng.
+  - Mọi thay đổi hợp đồng phải align với quy ước tháng:
+    - `start_date` = `YYYY-MM-01`
+    - `end_date` = `LAST_DAY(YYYY-MM)`
+
 ## 3. Daily Code Workflow
 **Bước 1**: Cập nhật code mới nhất & Tạo nhánh
 ```Bash
