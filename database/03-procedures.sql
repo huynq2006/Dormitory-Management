@@ -32,7 +32,6 @@ BEGIN
     DECLARE v_curr_occ TINYINT UNSIGNED;
     DECLARE v_capacity INT UNSIGNED;
     DECLARE v_room_status VARCHAR(20);
-    DECLARE v_end_date DATE;
     
 	DECLARE v_sqlstate VARCHAR(5);
     DECLARE v_message TEXT;
@@ -57,9 +56,14 @@ BEGIN
 	-- 2.3 Start Transaction & Set Savepoint
 	START TRANSACTION;
     SAVEPOINT sp_start_transfer;
+    
+    IF DAY(CURDATE()) != 1 THEN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Transfer room on 1st month';
+    END IF;
 
 	-- 2.4. Validate student's current contract
-    SELECT contract_id, room_id, end_date INTO v_old_contract_id, v_old_room_id, v_end_date
+    SELECT contract_id, room_id INTO v_old_contract_id, v_old_room_id
     FROM contracts
     WHERE student_id = p_student_id AND status = 'active'
     ORDER BY contract_id DESC
@@ -91,16 +95,16 @@ BEGIN
     -- 2.6. Execute transfer (BR-06)
 	UPDATE contracts
 	SET status = 'ended',
-	end_date = LAST_DAY(CURDATE())
+	end_date = CURDATE() - INTERVAL 1 DAY 
 	WHERE contract_id = v_old_contract_id;
 
     -- 2.7. Create a new contract on 1st of next month
     INSERT INTO contracts (student_id, room_id, start_date, status)
-    VALUES (p_student_id, p_new_room_id, DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY), 'active');
+    VALUES (p_student_id, p_new_room_id, CURDATE(), 'active');
 
     CALL sp_add_audit_log(
-    USER(), 
     'sp_transfer_room', 
+    'SUCCESS', 
     CONCAT('Transferred student ', p_student_id, ' from room ', v_old_room_id, ' to room ', p_new_room_id), NULL);
 	COMMIT;
 END //
@@ -132,13 +136,15 @@ BEGIN
 		GET DIAGNOSTICS CONDITION 1
 			v_sqlstate = RETURNED_SQLSTATE,
             v_message = MESSAGE_TEXT;
-		ROLLBACK;   
-		CALL sp_add_audit_log(USER(), 'sp_generate_monthly_invoices', v_message, v_sqlstate);
+		ROLLBACK TO SAVEPOINT sp_generate_monthly_invoices;   
+		CALL sp_add_audit_log('sp_generate_monthly_invoices', 'ERROR', CONCAT('User: ', USER(), ' | ', v_message), v_sqlstate);
+        COMMIT;
         RESIGNAL;
 	END;
     
     -- 3.3. Start financial transaction 
     START TRANSACTION;
+    SAVEPOINT sp_generate_monthly_invoices;
     
     IF DAY(p_month) != 1 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Month parameter must be the 1st day of the month (YYYY-MM-01).';
@@ -169,7 +175,7 @@ BEGIN
         (m.water_new - m.water_old) * v_water_price +
         v_service_fee),
         
-        DATE_ADD(p_month, INTERVAL 15 DAY),
+        DATE_ADD(DATE_ADD(p_month, INTERVAL 1 MONTH), INTERVAL 14 DAY),
         'unpaid'
     FROM rooms r
     JOIN meter_readings m ON r.room_id = m.room_id AND m.month = p_month
@@ -185,13 +191,13 @@ BEGIN
         total_amount = VALUES(total_amount),
         due_date = VALUES(due_date);
 	
-    COMMIT;
-
     CALL sp_add_audit_log(
-    USER(),
-    'sp_generate_monthly_invoices', 
+    'sp_generate_monthly_invoices',
+    'SUCCESS', 
     CONCAT('Generated monthly invoice for month ', p_month, '. Room Filter: ', IFNULL(p_room_id, 'ALL')), 
     NULL);
+    
+	COMMIT;
 END //
 
 DELIMITER ;
