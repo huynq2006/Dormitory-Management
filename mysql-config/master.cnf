@@ -1,0 +1,8 @@
+[mysqld]
+server-id = 1
+
+log_bin = mysql-bin
+binlog_do_db = dormitory_management
+
+gtid_mode = ON
+enforce_gtid_consistency = ON

@@ -1,0 +1,35 @@
+services:
+  # Master Database Server
+  mysql-master:
+    build:
+        context: .
+        dockerfile: ./dockerfiles/Dockerfile.master
+    container_name: mysql-master
+    restart: always
+    ports:
+      - "13306:3306"
+    env_file:
+      - .env
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+      - ./database/migrations:/migrations
+      - master-data:/var/lib/mysql
+
+  # Slave Database Server
+  mysql-slave:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.slave
+    container_name: mysql-slave
+    restart: always
+    ports:
+      - "13307:3306"
+    env_file:
+      - .env
+    depends_on:
+      - mysql-master
+    volumes:
+      - slave-data:/var/lib/mysql
+volumes:
+  master-data:
+  slave-data:
