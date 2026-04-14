@@ -1,6 +1,6 @@
 from faker import Faker
 from faker.providers import BaseProvider
-from backend.db_connection import get_connection
+from backend.db_helper import get_connection
 import random
 from datetime import date, timedelta
 from unidecode import unidecode
