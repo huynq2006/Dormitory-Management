@@ -1,6 +1,6 @@
 import pymysql
 import os
-from db_connection import get_connection
+from db_helper import get_connection
 
 def transfer_student(student_id, new_room_id): 
     connection = get_connection()
