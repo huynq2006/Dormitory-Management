@@ -13,7 +13,6 @@ BEGIN
     DECLARE v_room_status VARCHAR(20);
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
-    DECLARE v_end_date DATE;
     DECLARE v_end_of_month DATE;  
     DECLARE v_start_next_month DATE;  
 
@@ -34,7 +33,7 @@ BEGIN
     START TRANSACTION;
 
     -- Select current active contract for the student
-    SELECT contract_id, room_id, end_date INTO v_old_contract_id, v_old_room_id, v_end_date
+    SELECT contract_id, room_id INTO v_old_contract_id, v_old_room_id
     FROM contracts
     WHERE student_id = p_student_id AND status = 'active'
     LIMIT 1
