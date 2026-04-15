@@ -13,8 +13,7 @@ BEGIN
     DECLARE v_room_status VARCHAR(20);
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
-    DECLARE v_end_of_month DATE;  
-    DECLARE v_start_next_month DATE;  
+    DECLARE v_start_next_month DATE; u 
 
     DECLARE v_sqlstate CHAR(5); 
     DECLARE v_errmsg TEXT;
@@ -67,10 +66,9 @@ BEGIN
     END IF;
 
     -- End old contract and create new one
-    SET v_end_of_month = LAST_DAY(p_effective_date);
-    SET v_start_next_month = DATE_ADD(v_end_of_month, INTERVAL 1 DAY);
+    SET v_start_next_month = DATE_ADD(p_effective_date, INTERVAL 1 DAY);
 
-    UPDATE contracts SET end_date = v_end_of_month, status = 'ended'
+    UPDATE contracts SET end_date = p_effective_date, status = 'ended'
     WHERE contract_id = v_old_contract_id;
 
     INSERT INTO contracts (student_id, room_id, start_date, status)
