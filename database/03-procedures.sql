@@ -16,102 +16,8 @@ END //
 
 DELIMITER ;
 
--- 2. Procedure: sp_transfer_room
-DELIMITER //
 
-DROP PROCEDURE IF EXISTS sp_transfer_room //
-
-CREATE PROCEDURE sp_transfer_room(
-    IN p_student_id INT,
-    IN p_new_room_id INT
-)
-BEGIN
-	-- 2.1 Variable declarations
-    DECLARE v_old_contract_id INT;
-    DECLARE v_old_room_id INT;
-    DECLARE v_curr_occ TINYINT UNSIGNED;
-    DECLARE v_capacity INT UNSIGNED;
-    DECLARE v_room_status VARCHAR(20);
-    
-	DECLARE v_sqlstate VARCHAR(5);
-    DECLARE v_message TEXT;
-    -- 2.2 Error handling
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
-    BEGIN
-		GET DIAGNOSTICS CONDITION 1
-			v_sqlstate = RETURNED_SQLSTATE,
-            v_message = MESSAGE_TEXT;
-            
-		ROLLBACK TO SAVEPOINT sp_start_transfer;
-
-        CALL sp_add_audit_log(
-			'sp_transfer_room', 
-            'ERROR',
-			CONCAT('User: ', USER(), ' | Error: ', v_message),
-            v_sqlstate);
-		COMMIT;
-        RESIGNAL;
-    END;
-
-	-- 2.3 Start Transaction & Set Savepoint
-	START TRANSACTION;
-    SAVEPOINT sp_start_transfer;
-    
-    IF DAY(CURDATE()) != 1 THEN
-    SIGNAL SQLSTATE '45000'
-    SET MESSAGE_TEXT = 'Transfer room on 1st month';
-    END IF;
-
-	-- 2.4. Validate student's current contract
-    SELECT contract_id, room_id INTO v_old_contract_id, v_old_room_id
-    FROM contracts
-    WHERE student_id = p_student_id AND status = 'active'
-    ORDER BY contract_id DESC
-    LIMIT 1 FOR UPDATE;
-
-    IF v_old_contract_id IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student does not have an active contract to transfer.';
-	END IF;
-	IF v_old_room_id = p_new_room_id THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student is already in this room.';
-	END IF;
-    
-    -- 2.5. Lock new room and check capacity (BR-01, BR-03)
-    SELECT current_occupancy, capacity, status
-    INTO v_curr_occ, v_capacity, v_room_status
-    FROM rooms
-    WHERE room_id = p_new_room_id
-    FOR UPDATE;
-
-	IF v_room_status = 'maintenance' THEN
-	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room under maintenance';
-    END IF;
-    
-    IF v_curr_occ >= v_capacity THEN
-        SIGNAL SQLSTATE '45000'
-		SET MESSAGE_TEXT = 'Room is full';
-	END IF;
-    
-    -- 2.6. Execute transfer (BR-06)
-	UPDATE contracts
-	SET status = 'ended',
-	end_date = CURDATE() - INTERVAL 1 DAY 
-	WHERE contract_id = v_old_contract_id;
-
-    -- 2.7. Create a new contract on 1st of next month
-    INSERT INTO contracts (student_id, room_id, start_date, status)
-    VALUES (p_student_id, p_new_room_id, CURDATE(), 'active');
-
-    CALL sp_add_audit_log(
-    'sp_transfer_room', 
-    'SUCCESS', 
-    CONCAT('Transferred student ', p_student_id, ' from room ', v_old_room_id, ' to room ', p_new_room_id), NULL);
-	COMMIT;
-END //
-
-DELIMITER ;
-
--- 3.Procedure: sp_generate_monthly_invoices
+-- 2.Procedure: sp_generate_monthly_invoices
 
 DELIMITER //
 
@@ -122,7 +28,7 @@ CREATE PROCEDURE sp_generate_monthly_invoices(
     IN p_month DATE
 )
 BEGIN
-	-- 3.1. Pricing configuration & Variable declarations
+	-- 2.1. Pricing configuration & Variable declarations
 	DECLARE v_elec_price DECIMAL(12,2) DEFAULT 3000.00;
     DECLARE v_water_price DECIMAL(12,2) DEFAULT 10000.00;
     DECLARE v_service_fee DECIMAL(12,2) DEFAULT 100000.00;
@@ -130,7 +36,7 @@ BEGIN
     DECLARE v_sqlstate VARCHAR(5);
     DECLARE v_message TEXT;
     
-    -- 3.2. Error handling
+    -- 2.2. Error handling
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
 		GET DIAGNOSTICS CONDITION 1
@@ -142,7 +48,7 @@ BEGIN
         RESIGNAL;
 	END;
     
-    -- 3.3. Start financial transaction 
+    -- 2.3. Start financial transaction 
     START TRANSACTION;
     SAVEPOINT sp_generate_monthly_invoices;
     
@@ -154,7 +60,7 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room ID does not exist.';
     END IF;
     
-    -- 3.4. Insert or update (IDEMPOTENT) & Calculate Ulities
+    -- 2.4. Insert or update (IDEMPOTENT) & Calculate Ulities
     INSERT INTO invoices (
         room_id, month, room_fee,
         electric_fee, water_fee, service_fee,
