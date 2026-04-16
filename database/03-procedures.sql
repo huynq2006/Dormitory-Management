@@ -14,6 +14,9 @@ BEGIN
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
     DECLARE v_start_next_month DATE;
+    DECLARE v_room_exists INT;
+    DECLARE v_is_active_student INT DEFAULT 0;
+    DECLARE v_active_contract_count INT DEFAULT 0;
 
     DECLARE v_sqlstate CHAR(5); 
     DECLARE v_errmsg TEXT;
@@ -24,18 +27,36 @@ BEGIN
 
         ROLLBACK;
 
-        CALL sp_add_audit_log(USER(), 'sp_transfer_room', v_errmsg, v_sqlstate);
+        CALL sp_add_audit_log('sp_transfer_room','ERROR', v_errmsg, v_sqlstate);
         
         RESIGNAL;
     END;
 
     START TRANSACTION;
 
+    SELECT COUNT(*) INTO v_is_active_student 
+    FROM students 
+    WHERE student_id = p_student_id AND status = 1;
+
+    IF v_is_active_student = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student does not exist or is inactive';
+    END IF;
+
+    SELECT COUNT(*) INTO v_active_contract_count 
+    FROM contracts 
+    WHERE student_id = p_student_id AND status = 'active';
+
+    IF v_active_contract_count = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student has no active contract';
+    
+    ELSEIF v_active_contract_count > 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data integrity issue: student has multiple active contracts';
+    END IF;
+
     -- Select current active contract for the student
     SELECT contract_id, room_id INTO v_old_contract_id, v_old_room_id
     FROM contracts
     WHERE student_id = p_student_id AND status = 'active'
-    LIMIT 1
     FOR UPDATE;
 
     IF v_old_contract_id IS NULL THEN
@@ -44,6 +65,11 @@ BEGIN
 
     IF v_old_room_id = p_new_room_id THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student is already in this room';
+    END IF;
+
+    SELECT COUNT(*) INTO v_room_exists FROM rooms WHERE room_id = p_new_room_id;
+    IF v_room_exists = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room does not exist';
     END IF;
 
     -- Take room lock and check capacity + maintenance status
@@ -61,8 +87,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room is full';
     END IF;
 
-    IF p_effective_date <> LAST_DAY(p_effective_date) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at month end';
+    IF CURDATE() <> LAST_DAY(CURDATE()) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed exactly on the last day of the month';
+    END IF;
+    
+    IF p_effective_date <> LAST_DAY(CURDATE()) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end';
     END IF;
 
     -- End old contract and create new one
@@ -75,7 +105,7 @@ BEGIN
     VALUES (p_student_id, p_new_room_id, v_start_next_month, 'active');
 
     CALL sp_add_audit_log(
-        USER(), 
+        'sp_transfer_room', 
         'TRANSFER_ROOM', 
         CONCAT('Successfully transferred student ', p_student_id, ' from room ', v_old_room_id, ' to room ', p_new_room_id), 
         NULL
