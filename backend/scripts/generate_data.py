@@ -2,17 +2,28 @@ import os
 import pymysql
 from faker import Faker
 import random
+from urllib.parse import urlparse
 
 # Initialize Faker with Vietnamese locale to ensure culturally accurate mock data
 fake = Faker('vi_VN')
 
 def get_db_connection():
-    # Retrieve connection credentials from Docker environment variables
+    # Retrieve the complete database connection URL from environment variables
+    db_url = os.getenv('DB_MASTER_URL')
+    
+    if not db_url:
+        raise ValueError("Error: DB_MASTER_URL environment variable is missing!")
+
+    # Parse the connection URL to extract individual credentials
+    parsed = urlparse(db_url)
+
+    # Establish and return the PyMySQL connection using extracted parameters
     return pymysql.connect(
-        host=os.getenv('DB_MASTER_HOST'),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        database=os.getenv('MYSQL_DATABASE'),
+        host=parsed.hostname,              # e.g., 'mysql-master'
+        user=parsed.username,              # e.g., 'app_user'
+        password=parsed.password,          # e.g., 'App_Pass@123'
+        database=parsed.path.lstrip('/'),  # Remove the leading slash from the path
+        port=parsed.port or 3306,          # Fallback to default MySQL port if missing
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
