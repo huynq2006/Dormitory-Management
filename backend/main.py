@@ -5,6 +5,9 @@ from db_helper import get_connection
 def transfer_student(student_id, new_room_id): 
     connection = get_connection()
         
+    if not connection:
+        return False, "Can't connect to database"
+        
     try:
         with connection.cursor() as cursor:
             sql_check = "SELECT room_id FROM contracts WHERE student_id = %s AND status = 'active'"

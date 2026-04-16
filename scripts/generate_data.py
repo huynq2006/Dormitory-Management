@@ -23,23 +23,27 @@ def normalize_name(name):
 def generated_students(n):
     students = []
     
-    if n > 400:
+    if n > 5000:
         print("Số lượng người không được vượt quá 400")
-        n = 400
+        n = 5000
     
     for _ in range(n):
-        
         first_name = fake.vn_first_name()
         last_name = fake.last_name()
+        student_code = fake.unique.bothify(text='####')
+        prefix = random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
+        full_student_code = prefix + student_code
+        dob = fake.date_of_birth(minimum_age=18, maximum_age=25)
+        base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
+        email = f"{base_email}@vnu.edu.vn"
         
         data = {
-            "student_code": random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
-                + f"{random.randint(0, 9999):04d}", # giữ đuôi
+            "student_code": student_code,
             "first_name" : first_name,
             "last_name" : last_name,
             "gender" : fake.random_element(elements=('M', 'F', 'O')),
-            "dob" : fake.date_of_birth(minimum_age=18, maximum_age=25),
-            "email": normalize_name(first_name) + normalize_name(last_name) + "@gmail.com",
+            "dob" : dob,
+            "email": email,
             "phone": fake.phone_number(),
             "status": 1        
         }
@@ -65,7 +69,7 @@ def generated_rooms(n):
             "capacity": random.randint(1, 6),
             "current_occupancy": 0,
             "base_price": round(random.uniform(50.0, 200.0), 2),
-            "status": random.choice(['available', 'full', 'maintenance'])
+            "status": "available"
         }
         rooms.append(data)
     
@@ -263,6 +267,11 @@ def insert_invoices(connection, data_list):
     connection.commit()
     
 def main():
+    amt_of_students = int(input("Số lượng học sinh:"))
+    amt_of_rooms = int(input("Số lượng phòng:"))
+    amt_of_contracts = int(input("Số lượng hợp đồng:"))
+    cnt_months_mtr_readings = int(input("Số lượng tháng tính điện nước:"))
+    
     try: 
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         cursor.execute("TRUNCATE TABLE invoices;")
@@ -272,8 +281,8 @@ def main():
         cursor.execute("TRUNCATE TABLE rooms;")
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
         
-        raw_student = generated_students(2)
-        raw_rooms = generated_rooms(2)
+        raw_student = generated_students(amt_of_students)
+        raw_rooms = generated_rooms(amt_of_rooms)
     
         insert_students(connection, raw_student)
         insert_rooms(connection, raw_rooms)
@@ -284,13 +293,13 @@ def main():
         cursor.execute("SELECT room_id FROM rooms")
         all_room_ids = [r_ID["room_id"] for r_ID in cursor.fetchall()]
         
-        raw_contracts = generated_contracts(2, all_student_ids, all_room_ids)
+        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_ids)
         insert_contracts(connection, raw_contracts)
 
         cursor.execute("SELECT reading_id from meter_readings")
         all_reading_ids = [rds_ID["reading_id"] for rds_ID in cursor.fetchall()]
         
-        raw_readings = generated_meter_readings(all_room_ids, 3)
+        raw_readings = generated_meter_readings(all_room_ids, cnt_months_mtr_readings)
         insert_readings(connection, raw_readings)
         
         cursor.execute("SELECT room_id, base_price from rooms")
