@@ -58,9 +58,9 @@ def generated_students(n):
 def generated_rooms(n):
     rooms = []
     
-    if n > 200:
+    if n > 1000:
         print("Cảnh báo: Số lượng phòng không được vượt quá 200")
-        n = 200
+        n = 1000
     
     for _ in range(n):
         
@@ -79,16 +79,21 @@ def generated_rooms(n):
         
     return rooms
 
-def generated_contracts(n, all_room_ids, all_student_ids):
+def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
     contracts = []  
     today = date.today()
     
-    if n > 200:
+    if n > 5000:
         print("Cảnh báo: Số lượng hợp đồng không được vượt quá 200")
-        n = 200
-        
+        n = 5000
+    
+    n = min(n, len(all_student_ids))
     selected_students = random.sample(all_student_ids, n)
         
+    cursor.execute("SELECT room_id, capacity FROM rooms")
+    room_caps = {r['room_id']: r['capacity'] for r in cursor.fetchall()}
+    active_counts = {r_id: 0 for r_id in all_room_ids} # Count how many people who has an active account
+
     for i in range(n):
         student_id = selected_students[i]
         
@@ -113,6 +118,26 @@ def generated_contracts(n, all_room_ids, all_student_ids):
             status = 'active'
             final_end_date = intended_end_date
         
+        room_id = None
+        if status == 'active':
+            # Find rooms that still have available capacity
+            available_rooms = [r for r in all_room_ids if active_counts[r] < room_caps.get(r, 0)]
+            
+            if not available_rooms:
+                # If no rooms are available, force the contract status to 'ended'
+                # to maintain data integrity and avoid database constraint violations
+                status = 'ended'
+                final_end_date = start_date + timedelta(days=10)
+                room_id = random.choice(all_room_ids)
+            else:
+                # If rooms are available, pick one at random and increment its occupancy count
+                room_id = random.choice(available_rooms)
+                active_counts[room_id] += 1
+        else:
+            # For cancelled/ended contracts, database triggers typically do not 
+            # include these in the current_occupancy calculation
+            room_id = random.choice(all_room_ids)
+        
         data = {
             "student_id" : student_id,
             "room_id" : random.choice(all_room_ids),
@@ -121,9 +146,9 @@ def generated_contracts(n, all_room_ids, all_student_ids):
             "status" : status
         }
         contracts.append(data)
-    for contract in contracts:    
+    for contract in contracts[:10]:    
         print(contract)
-    print('\n')
+    print(f"... (và {len(contracts) - 10} hợp đồng khác)\n")
         
     return contracts
 
@@ -290,14 +315,14 @@ def main():
         cursor.execute("SELECT student_id FROM students")
         all_student_ids = [stu_ID["student_id"] for stu_ID in cursor.fetchall()]
     
-        cursor.execute("SELECT room_id FROM rooms")
-        all_room_ids = [r_ID["room_id"] for r_ID in cursor.fetchall()]
+        cursor.execute("SELECT room_id, capacity FROM rooms")
+        rooms_data = cursor.fetchall()
+        # Tạo dictionary để tra cứu sức chứa: {room_id: capacity}
+        room_caps = {r["room_id"]: r["capacity"] for r in rooms_data}
+        all_room_ids = list(room_caps.keys())
         
-        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_ids)
+        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_ids, room_caps)
         insert_contracts(connection, raw_contracts)
-
-        cursor.execute("SELECT reading_id from meter_readings")
-        all_reading_ids = [rds_ID["reading_id"] for rds_ID in cursor.fetchall()]
         
         raw_readings = generated_meter_readings(all_room_ids, cnt_months_mtr_readings)
         insert_readings(connection, raw_readings)
