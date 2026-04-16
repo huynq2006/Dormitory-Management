@@ -38,7 +38,7 @@ def generated_students(n):
         email = f"{base_email}@vnu.edu.vn"
         
         data = {
-            "student_code": student_code,
+            "student_code": full_student_code,
             "first_name" : first_name,
             "last_name" : last_name,
             "gender" : fake.random_element(elements=('M', 'F', 'O')),

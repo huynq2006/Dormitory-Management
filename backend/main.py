@@ -1,12 +1,17 @@
 import pymysql
 import os
-from db_helper import get_connection
+ try:
+     from .db_helper import get_connection
+ except ImportError:
+     from db_helper import get_connection
 
 def transfer_student(student_id, new_room_id): 
     connection = get_connection()
+    if connection is None:
+         raise ConnectionError("Failed to establish a database connection.")
         
     if not connection:
-        return False, "Can't connect to database"
+        return False, "Can't connect to the correct database."
         
     try:
         with connection.cursor() as cursor:
