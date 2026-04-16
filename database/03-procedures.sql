@@ -13,7 +13,7 @@ BEGIN
     DECLARE v_room_status VARCHAR(20);
     DECLARE v_old_contract_id INT;
     DECLARE v_old_room_id INT;
-    DECLARE v_start_next_month DATE; u 
+    DECLARE v_start_next_month DATE;
 
     DECLARE v_sqlstate CHAR(5); 
     DECLARE v_errmsg TEXT;
