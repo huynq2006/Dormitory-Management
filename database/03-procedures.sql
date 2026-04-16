@@ -59,10 +59,6 @@ BEGIN
     WHERE student_id = p_student_id AND status = 'active'
     FOR UPDATE;
 
-    IF v_old_contract_id IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student has no active contract';
-    END IF;
-
     IF v_old_room_id = p_new_room_id THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Student is already in this room';
     END IF;
