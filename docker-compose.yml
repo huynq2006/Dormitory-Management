@@ -2,8 +2,8 @@ services:
   # Master Database Server
   mysql-master:
     build:
-        context: .
-        dockerfile: ./dockerfiles/Dockerfile.master
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.master
     container_name: mysql-master
     restart: always
     ports:
