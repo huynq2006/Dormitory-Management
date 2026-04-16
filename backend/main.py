@@ -1,8 +1,8 @@
 import pymysql
 import os
- try:
+try:
      from .db_helper import get_connection
- except ImportError:
+except ImportError:
      from db_helper import get_connection
 
 def transfer_student(student_id, new_room_id): 
