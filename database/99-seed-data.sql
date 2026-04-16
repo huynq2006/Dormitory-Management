@@ -17,7 +17,7 @@ DELETE FROM rooms WHERE room_id IN (101, 102, 103);
 SET FOREIGN_KEY_CHECKS = 1;
 
 insert into rooms (room_id, capacity, current_occupancy,base_price, status) VALUES
-(101, 2, 2, 1500000, 'available'), -- phong binh thuong 
+(101, 2, 2, 1500000, 'full'), -- phong binh thuong 
 (102, 4, 0, 1000000, 'available'), -- phong trong
 (103, 2, 0, 2000000,'maintenance'); -- phong trong + bao tri
 
