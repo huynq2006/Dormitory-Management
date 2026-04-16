@@ -28,7 +28,7 @@ BEGIN
         ROLLBACK;
 
         CALL sp_add_audit_log('sp_transfer_room','ERROR', v_errmsg, v_sqlstate);
-        
+        COMMIT;
         RESIGNAL;
     END;
 
