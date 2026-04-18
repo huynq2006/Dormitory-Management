@@ -2,6 +2,9 @@ import os
 import pymysql
 from urllib.parse import urlparse
 
+# Load environment variables from .env (once)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 def _get_connection(url_env):
     # Retrieve the complete database connection URL from environment variables
     db_url = os.getenv(url_env)
@@ -27,6 +30,7 @@ def _get_connection(url_env):
         # Catch network/authentication errors early for clear logging
         print(f"[CONNECTION ERROR] Cannot connect to DB via {url_env}: {e}")
         raise e
+from dotenv import load_dotenv
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
@@ -68,10 +72,8 @@ def execute_write(query, params=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(query, params)
-            
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
-        
     except Exception as e:
         if conn:
             conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
@@ -86,3 +88,9 @@ def execute_write(query, params=None):
     finally:
         if conn:
             conn.close()
+
+def fetch_rooms():
+    """
+    Query room list (for dashboard/frontend).
+    """
+    return fetch_data("SELECT * FROM rooms")
