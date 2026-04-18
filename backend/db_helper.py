@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_connection(): 
+def _get_connection(host_env):
+    """
+    Internal private function to initialize a standard database connection.
+    Retrieves credentials dynamically from environment variables.
+    """
     try:
         db_host = os.getenv('DB_HOST')
         db_user = os.getenv('DB_USER')
@@ -24,22 +28,6 @@ def get_connection():
     except pymysql.MySQLError as e:
         print(f"Lỗi kết nối Database: {e}")
         return None
-import os
-import pymysql
-
-def _get_connection(host_env):
-    """
-    Internal private function to initialize a standard database connection.
-    Retrieves credentials dynamically from environment variables.
-    """
-    return pymysql.connect(
-        host=os.getenv(host_env),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        database=os.getenv('MYSQL_DATABASE'),
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
