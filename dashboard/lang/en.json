@@ -1,0 +1,20 @@
+{
+  "sidebar": {
+    "overview": "Overview",
+    "rooms": "Room Management",
+    "sql_workspace": "SQL Workspace",
+    "settings": "Settings"
+  },
+  "settings": {
+    "language": "Language",
+    "role": "Role"
+  },
+  "roles": {
+    "admin": "Admin",
+    "manager": "Manager",
+    "student": "Student"
+  },
+  "rooms": {
+    "title": "Room List"
+  }
+}
