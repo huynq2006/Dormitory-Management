@@ -1,6 +1,5 @@
 
 -- 1. Event scheduler evt_monthly_billing_process
-
 DELIMITER // 
 
 DROP EVENT IF EXISTS evt_monthly_billing_process // 
