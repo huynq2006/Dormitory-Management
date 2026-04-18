@@ -1,0 +1,20 @@
+{
+  "sidebar": {
+    "overview": "Tổng quan",
+    "rooms": "Quản lý phòng",
+    "sql_workspace": "SQL Workspace",
+    "settings": "Cài đặt"
+  },
+  "settings": {
+    "language": "Ngôn ngữ",
+    "role": "Vai trò"
+  },
+  "roles": {
+    "admin": "Quản trị viên",
+    "manager": "Ban quản lý",
+    "student": "Sinh viên"
+  },
+  "rooms": {
+    "title": "Danh sách phòng"
+  }
+}
