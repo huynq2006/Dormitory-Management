@@ -1,12 +1,13 @@
 import os
+import sys
 import pymysql
 from faker import Faker
 import random
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import db_helper
 
 # Initialize Faker with Vietnamese locale to ensure culturally accurate mock data
 fake = Faker('vi_VN')
-
 
 def seed_students(n=50):
     try:
