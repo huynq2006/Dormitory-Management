@@ -1,5 +1,9 @@
 import os
 import pymysql
+from dotenv import load_dotenv
+
+# Load environment variables from .env (once)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 def _get_connection(host_env):
     """
@@ -11,6 +15,7 @@ def _get_connection(host_env):
         user=os.getenv('MYSQL_USER'),
         password=os.getenv('MYSQL_PASSWORD'),
         database=os.getenv('MYSQL_DATABASE'),
+        port=int(os.getenv('DB_PORT', 3306)),
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
@@ -50,13 +55,17 @@ def execute_write(query, params=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(query, params)
-            
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
-        
     except Exception as e:
         conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
         print(f"[MASTER WRITE ERROR]: {e}")
         raise e
     finally:
         conn.close()
+
+def fetch_rooms():
+    """
+    Query room list (for dashboard/frontend).
+    """
+    return fetch_data("SELECT * FROM rooms")
