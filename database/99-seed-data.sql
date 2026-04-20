@@ -211,13 +211,11 @@ VALUES (301, '2026-03-01', 0, 100, 0, 15);
       end_date = '2026-03-31'
     WHERE room_id = 301 AND status = 'active';
 
-
     -- Bước 2: Kiểm tra xem Trigger đã trả phòng về 0 người chưa
     -- Kỳ vọng: current_occupancy = 0 và status = 'available'
     SELECT room_id, current_occupancy, status
     FROM rooms
     WHERE room_id = 301;
-
 
     -- Bước 3: Kiểm tra hóa đơn
     -- Kỳ vọng: Bảng vẫn giữ nguyên hóa đơn của phòng 301 (số tiền nợ vẫn còn đó)
@@ -225,5 +223,24 @@ VALUES (301, '2026-03-01', 0, 100, 0, 15);
     FROM invoices
     WHERE room_id = 301;
 
-
+  -- CASE 5: chốt hóa đơn cho tháng mới, không bị ảnh hưởng bởi hóa đơn tháng cũ
+	  -- Bước 1: Cập nhật lại sĩ số phòng 301 là 3
+    UPDATE rooms
+    SET current_occupancy = 3
+    WHERE room_id = 301;
+	
+    -- Bước 2: Tạo hóa đơn cho tháng mới (tháng 4)
+    INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new) 
+    VALUES (301, '2026-04-01', 80, 150, 7, 15);
+    
+    -- Bước 3: Tính hóa đơn và kiểm tra
+    CALL sp_generate_monthly_invoices (301, '2026-04-01');
+    select * from invoices;
+    
+  -- CASE 6: Không cho phép tính Chỉ số mới < Chỉ số cũ (phòng 101)
+    INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
+    VALUES (101, '2026-04-01', 30, 20, 3, 2);
+    
+    CALL sp_generate_monthly_invoices (101, '2026-04-01');
+	  select * from invoices;
 
