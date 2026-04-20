@@ -13,6 +13,11 @@ BEGIN
 	INSERT INTO audit_log (log_time, actor, action, detail, error_code)
     VALUES (NOW(), actor, action, detail, error_code);
 
+END //
+
+DELIMITER ;
+
+-- 2. Procedure: sp_trasfer_room
 DELIMITER //
 
 DROP PROCEDURE IF EXISTS sp_transfer_room //
@@ -128,7 +133,7 @@ END //
 
 DELIMITER ;
 
--- 2.Procedure: sp_generate_monthly_invoices
+-- 3.Procedure: sp_generate_monthly_invoices
 
 DELIMITER //
 
@@ -139,7 +144,7 @@ CREATE PROCEDURE sp_generate_monthly_invoices(
     IN p_month DATE
 )
 BEGIN
-	-- 2.1. Pricing configuration & Variable declarations
+	-- 3.1. Pricing configuration & Variable declarations
 	DECLARE v_elec_price DECIMAL(12,2) DEFAULT 3000.00;
     DECLARE v_water_price DECIMAL(12,2) DEFAULT 10000.00;
     DECLARE v_service_fee DECIMAL(12,2) DEFAULT 100000.00;
@@ -147,7 +152,7 @@ BEGIN
     DECLARE v_sqlstate VARCHAR(5);
     DECLARE v_message TEXT;
     
-    -- 2.2. Error handling
+    -- 3.2. Error handling
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
 		GET DIAGNOSTICS CONDITION 1
@@ -159,7 +164,7 @@ BEGIN
         RESIGNAL;
 	END;
     
-    -- 2.3. Start financial transaction 
+    -- 3.3. Start financial transaction 
     START TRANSACTION;
     SAVEPOINT sp_generate_monthly_invoices;
     
@@ -171,7 +176,7 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room ID does not exist.';
     END IF;
     
-    -- 2.4. Insert or update (IDEMPOTENT) & Calculate Ulities
+    -- 3.4. Insert or update (IDEMPOTENT) & Calculate Ulities
     INSERT INTO invoices (
         room_id, month, room_fee,
         electric_fee, water_fee, service_fee,
