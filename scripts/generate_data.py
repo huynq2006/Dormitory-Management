@@ -1,6 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from faker import Faker
 from faker.providers import BaseProvider
-from backend.db_helper import get_connection
+from backend.db_helper import get_master_connection
 import random
 from datetime import date, timedelta
 from unidecode import unidecode
@@ -11,7 +14,7 @@ class VietnameseNameProvider(BaseProvider):
 
 fake = Faker('vi_VN')
 fake.add_provider(VietnameseNameProvider)
-connection = get_connection()
+connection = get_master_connection()
 cursor = connection.cursor()
 
 def normalize_name(name):
@@ -23,14 +26,14 @@ def normalize_name(name):
 def generated_students(n):
     students = []
     
-    if n > 5000:
-        print("Số lượng người không được vượt quá 400")
-        n = 5000
+    if n > 10000:
+        print("Số lượng người không được vượt quá 10000")
+        n = 10000
     
     for _ in range(n):
         first_name = fake.vn_first_name()
         last_name = fake.last_name()
-        student_code = fake.unique.bothify(text='####')
+        student_code = fake.unique.bothify(text='#####')
         prefix = random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
         full_student_code = prefix + student_code
         dob = fake.date_of_birth(minimum_age=18, maximum_age=25)
@@ -44,7 +47,7 @@ def generated_students(n):
             "gender" : fake.random_element(elements=('M', 'F', 'O')),
             "dob" : dob,
             "email": email,
-            "phone": fake.phone_number(),
+            "phone": fake.unique.phone_number()[:20],
             "status": 1        
         }
         students.append(data)
@@ -59,7 +62,7 @@ def generated_rooms(n):
     rooms = []
     
     if n > 1000:
-        print("Cảnh báo: Số lượng phòng không được vượt quá 200")
+        print("Cảnh báo: Số lượng phòng không được vượt quá 1000")
         n = 1000
     
     for _ in range(n):
@@ -83,9 +86,9 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
     contracts = []  
     today = date.today()
     
-    if n > 5000:
-        print("Cảnh báo: Số lượng hợp đồng không được vượt quá 200")
-        n = 5000
+    if n > 10000:
+        print("Cảnh báo: Số lượng hợp đồng không được vượt quá 10000")
+        n = 10000
     
     n = min(n, len(all_student_ids))
     selected_students = random.sample(all_student_ids, n)
@@ -140,7 +143,7 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
         
         data = {
             "student_id" : student_id,
-            "room_id" : random.choice(all_room_ids),
+            "room_id" : room_id,
             "start_date" : start_date,
             "end_date" : final_end_date,
             "status" : status
@@ -159,10 +162,12 @@ def generated_meter_readings(all_room_ids, months_back=3):
     for room_id in all_room_ids:
         for i in range(months_back):
             # 1. Calculate the month in YYYY-MM-01 format
-            # Get the first day of the current month, then subtract i months
-            first_day_this_month = today.replace(day=1)
-            # Subtract i months (approximate by i * 31 days, then reset to day = 1)
-            reading_month = (first_day_this_month - timedelta(days=i*31)).replace(day=1)
+            y = today.year
+            m = today.month - i
+            while m <= 0:
+                m += 12
+                y -= 1
+            reading_month = date(y, m, 1)
             
             # 2. Generate electricity readings (Ensure electric_new >= electric_old)
             electric_old = random.randint(1000, 5000)

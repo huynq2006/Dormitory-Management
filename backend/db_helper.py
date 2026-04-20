@@ -1,33 +1,31 @@
 import pymysql
-import os
 from dotenv import load_dotenv
+import os
 
-load_dotenv()
+# Load environment variables from the backend/.env file explicitly.
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
 
 def _get_connection(host_env):
     """
     Internal private function to initialize a standard database connection.
     Retrieves credentials dynamically from environment variables.
     """
-    try:
-        db_host = os.getenv('DB_HOST')
-        db_user = os.getenv('DB_USER')
-        db_port = int(os.getenv('DB_PORT', 3306))
-        db_name = os.getenv('DB_NAME')
-        db_pass = os.getenv('DB_PASSWORD')
-        
-        return pymysql.connect(
-            host=db_host,
-            user=db_user,
-            port=db_port,
-            password=db_pass,
-            database=db_name,
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        
-    except pymysql.MySQLError as e:
-        print(f"Lỗi kết nối Database: {e}")
-        return None
+    host = os.getenv(host_env) or os.getenv('DB_HOST') or 'localhost'
+    database = os.getenv('DB_DATABASE') or os.getenv('DB_NAME')
+
+    if not database:
+        raise ValueError("Missing database setting: set DB_DATABASE or DB_NAME in backend/.env")
+
+    return pymysql.connect(
+        host=host,
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database=database,
+        port=int(os.getenv('DB_PORT', 3306)),
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
@@ -64,13 +62,17 @@ def execute_write(query, params=None):
     try:
         with conn.cursor() as cursor:
             cursor.execute(query, params)
-            
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
-        
     except Exception as e:
         conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
         print(f"[MASTER WRITE ERROR]: {e}")
         raise e
     finally:
         conn.close()
+
+def fetch_rooms():
+    """
+    Query room list (for dashboard/frontend).
+    """
+    return fetch_data("SELECT * FROM rooms")
