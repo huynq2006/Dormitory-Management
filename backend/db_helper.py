@@ -1,27 +1,20 @@
+import os
 import pymysql
 from dotenv import load_dotenv
-import os
 
-# Load environment variables from the backend/.env file explicitly.
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+# Load environment variables from .env (once)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-
-def _get_connection(host_env):
+def get_connection(host_env): # sửa hàm _get_connection thành get_connection để dễ sử dụng hơn
     """
     Internal private function to initialize a standard database connection.
     Retrieves credentials dynamically from environment variables.
     """
-    host = os.getenv(host_env) or os.getenv('DB_HOST') or 'localhost'
-    database = os.getenv('DB_DATABASE') or os.getenv('DB_NAME')
-
-    if not database:
-        raise ValueError("Missing database setting: set DB_DATABASE or DB_NAME in backend/.env")
-
     return pymysql.connect(
-        host=host,
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=database,
+        host=os.getenv(host_env),
+        user=os.getenv('MYSQL_USER'),
+        password=os.getenv('MYSQL_PASSWORD'),
+        database=os.getenv('MYSQL_DATABASE'),
         port=int(os.getenv('DB_PORT', 3306)),
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
@@ -29,11 +22,11 @@ def _get_connection(host_env):
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
-    return _get_connection('DB_SLAVE_HOST')
+    return get_connection('DB_SLAVE_HOST')
 
 def get_master_connection():
     """Returns a connection to the Primary Database (Master)."""
-    return _get_connection('DB_MASTER_HOST')
+    return get_connection('DB_MASTER_HOST')
 
 def fetch_data(query, params=None):
     """
