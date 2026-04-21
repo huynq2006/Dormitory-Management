@@ -152,7 +152,7 @@ Khi viết báo cáo, hãy sử dụng các số liệu thu được để chứ
 
 - Nâng cao: Thử ép luồng READ chạy thẳng vào Master trong Run 3 và đối chiếu độ trễ để thấy rõ sự sụt giảm hiệu năng.
 
-B. Chứng minh hiệu năng của Index (Query Optimization)
+#### B. Chứng minh hiệu năng của Index (Query Optimization)
 
 **Cách làm**: Chạy riêng truy vấn SELECT * FROM vw_overdue_debtors. Chạy lần 1 khi chưa có Index, ghi lại p95 latency. Thêm Index (VD: vào cột paid_status, due_date), chạy lần 2 và đối chiếu.
 
