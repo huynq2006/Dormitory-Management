@@ -44,15 +44,8 @@ BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION 
     BEGIN
         GET DIAGNOSTICS CONDITION 1 v_sqlstate = RETURNED_SQLSTATE, v_errmsg = MESSAGE_TEXT;
-
-        ROLLBACK;
-
-        CALL sp_add_audit_log('sp_transfer_room','ERROR', v_errmsg, v_sqlstate);
-        COMMIT;
-        RESIGNAL;
+        RESIGNAL; 
     END;
-
-    START TRANSACTION;
 
     SELECT COUNT(*) INTO v_is_active_student 
     FROM students 
@@ -120,6 +113,7 @@ BEGIN
     INSERT INTO contracts (student_id, room_id, start_date, status)
     VALUES (p_student_id, p_new_room_id, v_start_next_month, 'active');
 
+    -- Write log Success
     CALL sp_add_audit_log(
         'sp_transfer_room', 
         'TRANSFER_ROOM', 
