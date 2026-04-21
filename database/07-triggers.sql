@@ -62,7 +62,7 @@ BEGIN
     IF LOWER(NEW.status) = 'active' THEN
         UPDATE rooms
         SET current_occupancy = current_occupancy + 1,
-            status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
+            status = IF(current_occupancy >= capacity, 'full', 'available')
         WHERE room_id = NEW.room_id;
         call sp_add_audit_log(USER(), 'INSERT_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' inserted'), 'SUCCESS');
     END IF;
@@ -77,11 +77,7 @@ BEGIN
     IF LOWER(OLD.status) <> 'active' AND LOWER(NEW.status) = 'active' THEN
         UPDATE rooms 
         SET current_occupancy = current_occupancy + 1,
-            status = IF((current_occupancy + 1) >= capacity, 'full', 'available')
-        WHERE room_id = NEW.room_id;
-        CALL sp_add_audit_log(USER(), 'ACTIVATE_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' activated'), 'SUCCESS');
-    
-    -- case B: end contract (Always set to available)
+            status = IF(current_occupancy >= capacity, 'full', 'available')
     ELSEIF LOWER(OLD.status) = 'active' AND LOWER(NEW.status) IN ('ended', 'cancelled') THEN
         UPDATE rooms 
         SET current_occupancy = GREATEST(current_occupancy - 1, 0),

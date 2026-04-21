@@ -93,11 +93,9 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
     n = min(n, len(all_student_ids))
     selected_students = random.sample(all_student_ids, n)
         
-    cursor.execute("SELECT room_id, capacity, current_occupancy FROM rooms")
-    room_rows = cursor.fetchall()
-    room_caps = {r['room_id']: r['capacity'] for r in room_rows}
-    room_current = {r['room_id']: r['current_occupancy'] for r in room_rows}
-    active_counts = {r_id: room_current.get(r_id, 0) for r_id in all_room_ids} # Count existing active occupancy plus generated active contracts
+    cursor.execute("SELECT room_id, capacity FROM rooms")
+    room_caps = {r['room_id']: r['capacity'] for r in cursor.fetchall()}
+    active_counts = {r_id: 0 for r_id in all_room_ids} # Count how many people who has an active account
 
     for i in range(n):
         student_id = selected_students[i]
