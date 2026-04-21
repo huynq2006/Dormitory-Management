@@ -158,16 +158,10 @@ BEGIN
 		GET DIAGNOSTICS CONDITION 1
 			v_sqlstate = RETURNED_SQLSTATE,
             v_message = MESSAGE_TEXT;
-		ROLLBACK TO SAVEPOINT sp_generate_monthly_invoices;   
-		CALL sp_add_audit_log('sp_generate_monthly_invoices', 'ERROR', CONCAT('User: ', USER(), ' | ', v_message), v_sqlstate);
-        COMMIT;
-        RESIGNAL;
+        RESIGNAL SET MESSAGE_TEXT = v_message;
 	END;
     
-    -- 3.3. Start financial transaction 
-    START TRANSACTION;
-    SAVEPOINT sp_generate_monthly_invoices;
-    
+    -- 3.3. Check input     
     IF DAY(p_month) != 1 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Month parameter must be the 1st day of the month (YYYY-MM-01).';
     END IF;
@@ -188,38 +182,37 @@ BEGIN
         r.base_price,
         
         -- Calculate utility fees = ( new reading - old reading) * price
-        (m.electric_new - m.electric_old) * v_elec_price ,
-        (m.water_new - m.water_old) * v_water_price,
+        GREATEST(0, COALESCE(m.electric_new - m.electric_old, 0)) * v_elec_price ,
+        GREATEST(0, COALESCE(m.water_new - m.water_old, 0)) * v_water_price,
         v_service_fee,
         
         -- Calculate total amount sum
-        (r.base_price + (m.electric_new - m.electric_old) * v_elec_price +
-        (m.water_new - m.water_old) * v_water_price +
+        (r.base_price + 
+        GREATEST(0, COALESCE(m.electric_new - m.electric_old, 0)) * v_elec_price +
+        GREATEST(0, COALESCE(m.water_new - m.water_old, 0)) * v_water_price +
         v_service_fee),
         
         DATE_ADD(DATE_ADD(p_month, INTERVAL 1 MONTH), INTERVAL 14 DAY),
         'unpaid'
     FROM rooms r
-    JOIN meter_readings m ON r.room_id = m.room_id AND m.month = p_month
+    LEFT JOIN meter_readings m ON r.room_id = m.room_id AND m.month = p_month
     WHERE r.status <> 'maintenance' AND r.current_occupancy > 0
 		AND (p_room_id IS NULL OR r.room_id = p_room_id) -- Filter by specific room or ALL
         
 	-- If invoice already exists for this month, update the amount instead of duplicating
     ON DUPLICATE KEY UPDATE
-        room_fee = VALUES(room_fee),
-        electric_fee = VALUES(electric_fee),
-        water_fee = VALUES(water_fee),
-        service_fee = VALUES(service_fee),
-        total_amount = VALUES(total_amount),
-        due_date = VALUES(due_date);
-	
+		room_fee     = IF(paid_status = 'paid', invoices.room_fee, VALUES(room_fee)),
+		electric_fee = IF(paid_status = 'paid', invoices.electric_fee, VALUES(electric_fee)),
+        water_fee    = IF(paid_status = 'paid', invoices.water_fee, VALUES(water_fee)),
+        service_fee  = IF(paid_status = 'paid', invoices.service_fee, VALUES(service_fee)),
+        total_amount = IF(paid_status = 'paid', invoices.total_amount, VALUES(total_amount)),
+        due_date     = IF(paid_status = 'paid', invoices.due_date, VALUES(due_date));
     CALL sp_add_audit_log(
     'sp_generate_monthly_invoices',
     'SUCCESS', 
     CONCAT('Generated monthly invoice for month ', p_month, '. Room Filter: ', IFNULL(p_room_id, 'ALL')), 
     NULL);
     
-	COMMIT;
 END //
 
 DELIMITER ;
