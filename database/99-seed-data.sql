@@ -35,3 +35,199 @@ INSERT INTO students (student_id, student_code, first_name, last_name, gender, e
 -- TEST CASE 1:  Phòng mới đã full (Vi phạm BR-01, phải ROLLBACK)
 
 
+-- TEST CASE 1 (TRIGGER PART): BR-01 phòng full
+-- Mục tiêu: BEFORE INSERT trigger chặn insert
+-- khi current_occupancy >= capacity
+ 
+-- Setup: Điền đầy room 101 (capacity=4) bằng cách cập nhật trực tiếp
+UPDATE rooms SET current_occupancy = 4, status = 'full' WHERE room_id = 101;
+ 
+-- Thử insert contract vào phòng full → phải bị chặn
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (1001, 101, CURDATE(), 'active');
+-- Expected: ERROR 'Room is full'
+ 
+SELECT 'TC1: Room 101 sau khi thử insert vào phòng full' AS test_step,
+       room_id, current_occupancy, status FROM rooms WHERE room_id = 101;
+-- Expected: current_occupancy=4, status='full' (không đổi)
+ 
+-- Reset room 101 cho các test tiếp theo
+UPDATE rooms SET current_occupancy = 0, status = 'available' WHERE room_id = 101;
+ 
+-- TEST CASE 4 (TRIGGER PART): Phòng maintenance
+-- Mục tiêu: BEFORE INSERT trigger chặn insert
+-- khi phòng đang bảo trì
+ 
+-- Thử insert contract vào phòng maintenance → phải bị chặn
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (1001, 104, CURDATE(), 'active');
+-- Expected: ERROR 'Room is under maintenance'
+ 
+SELECT 'TC4: Room 104 sau khi thử insert vào phòng maintenance' AS test_step,
+       room_id, current_occupancy, status FROM rooms WHERE room_id = 104;
+-- Expected: current_occupancy=0, status='maintenance' (không đổi)
+-- Nếu Kết quả hiển thị thành 1, kiểm tra
+SHOW TRIGGERS FROM dormitory_management 
+WHERE `Table` = 'contracts';
+SELECT * FROM rooms WHERE room_id = 104;
+SELECT * FROM contracts WHERE student_id = 1001;
+ 
+-- TEST CASE BR-02 (TRIGGER PART): 1 student 1 active contract
+-- Mục tiêu: BEFORE INSERT trigger chặn insert
+-- khi student đã có active contract
+ 
+-- Setup: SV1001 đang có contract active tại room 103
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (1001, 103, CURDATE(), 'active');
+ 
+SELECT 'BR-02 Setup: SV1001 vào room 103' AS test_step,
+       room_id, current_occupancy, status FROM rooms WHERE room_id = 103;
+-- Expected: current_occupancy=1
+ 
+-- Thử insert thêm 1 contract active cho SV1001 → phải bị chặn
+INSERT INTO contracts (student_id, room_id, start_date, status)
+VALUES (1001, 102, CURDATE(), 'active');
+-- Expected: ERROR 'Student already has an active contract'
+ 
+SELECT 'BR-02: Room 102 sau khi thử insert contract thứ 2' AS test_step,
+       room_id, current_occupancy, status FROM rooms WHERE room_id = 102;
+-- Expected: current_occupancy=0 (không đổi)
+
+--------------------------------------------------------------------------------
+-- Week 3: TEST PROCEDURE sp_generate_monthly_invoices + audit_log
+-- 1. xóa dữ liệu cũ
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE contracts;
+TRUNCATE TABLE rooms;
+TRUNCATE TABLE students;
+TRUNCATE TABLE audit_log;
+TRUNCATE TABLE invoices;
+TRUNCATE TABLE meter_readings;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- 2. tạo dữ liệu giả
+INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status) VALUES
+  (101, 4, 0, 1500000.00, 'available'),  
+  (201, 2, 0, 1000000.00, 'available'),
+  (301, 3, 0, 1300000.00, 'available');    
+  
+INSERT INTO students (student_id, student_code, first_name, last_name, gender, email, status) VALUES
+  (1001, 'SV1001', 'Anh',   'Nguyen', 'M', 'anh@vnu.edu.vn',   1),
+  (2001, 'SV2001', 'Ang',   'Pham',   'F', 'ang@vnu.edu.vn',   1),
+  (3001, 'SV3001', 'An',    'Dang',   'M', 'an@vnu.edu.vn',    1),
+  (3002, 'SV3002', 'Bao',   'Hoang',  'M', 'bao@vnu.edu.vn',   1),
+  (3003, 'SV3003', 'Chi',   'Vu',     'F', 'chi@vnu.edu.vn',   1);
+ 
+INSERT INTO contracts (student_id, room_id, start_date, status) VALUES
+  (3001, 301, '2026-03-01', 'active'),
+  (3002, 301, '2026-03-01', 'active'),
+  (3003, 301, '2026-03-01', 'active');
+-- Truyền số điện và số nước đã dùng trong tháng phòng 301
+INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
+VALUES (301, '2026-03-01', 0, 100, 0, 15);
+
+select * from contracts;
+
+-- 3. Gọi sp_generate_monthly_invoices để chốt hóa đơn và kiểm tra kết quả tính toán
+-- CASE 1: sai định dạng ngày truyền 
+call sp_generate_monthly_invoices (301, '2026-03-15');
+    
+-- CASE 2: đảm bảo Idempotent không tạo trùng 
+	-- lần 1: mong muốn tạo 1 dòng hóa đơn với tổng tiền 1tr850
+	call sp_generate_monthly_invoices (301, '2026-03-01');
+	-- kiểm tra 
+	select room_id, month, total_amount, 'chạy lần 1' as status 
+	from invoices where room_id = 301 and month = '2026-03-01';
+			
+	-- lần 2: mong muốn không tạo thêm, không báo lỗi
+	call sp_generate_monthly_invoices (301, '2026-03-01');
+	-- kiểm tra 
+	select room_id, month, total_amount, 'chạy lần 2' as status 
+	from invoices where room_id = 301 and month = '2026-03-01';
+			
+	-- lần 3: cập nhật số điện: 80 số, số nước: 7 khối cho phòng 'unpaid'
+	update meter_readings 
+	set electric_new = 80,
+	water_new = 7
+	where room_id = 301 and month = '2026-03-01';
+	call sp_generate_monthly_invoices (301, '2026-03-01');
+	select * from invoices;
+	
+  -- kiểm tra audig_log cho CASE 2
+  select * from audit_log;
+    
+-- CASE 3: chốt hóa đơn cho phòng đang có sinh viên
+-- bao gồm phòng đã chốt điện nước và phòng chưa chốt điện nước
+	-- B1: tạo contract cho 1 sv phòng 101, 1 sv phòng 201
+	INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) VALUES 
+		(4, 1001, 101, '2026-03-01', 'active'),
+		(5, 2001, 201, '2026-03-01', 'active');
+
+	-- B2: truyền số điện và số nước đã dùng trong tháng cho phòng 101 và không truyền cho phòng 201
+	INSERT INTO meter_readings (reading_id, room_id, month, electric_old, electric_new, water_old, water_new)
+	VALUES (2, 101, '2026-03-01', 0, 30, 0, 3);
+	
+	-- B3: gọi procedure tính tiền và kiểm tra
+  -- mong muốn có 2 hóa đơn cho 2 phòng 101 và 201
+	call sp_generate_monthly_invoices (101, '2026-03-01');
+  call sp_generate_monthly_invoices (201, '2026-03-01');
+	select * from invoices;
+  select * from audit_log;
+  
+-- CASE 4: lưu hóa đơn còn nợ, khi hợp đồng đã kết thúc
+	-- B1: Kết thúc TẤT CẢ hợp đồng của phòng 301 để đảm bảo phòng không còn ai
+	UPDATE contracts
+	SET status = 'ended',
+		end_date = '2026-03-31'
+	WHERE room_id = 301 AND status = 'active';
+
+	-- B2: Kiểm tra xem Trigger đã trả phòng về 0 người chưa
+	-- Kỳ vọng: current_occupancy = 0 và status = 'available'
+	SELECT room_id, current_occupancy, status 
+	FROM rooms 
+	WHERE room_id = 301;
+
+	-- Bước 3: Kiểm tra hóa đơn
+	-- Kỳ vọng: Bảng vẫn giữ nguyên hóa đơn của phòng 301 (số tiền nợ vẫn còn đó)
+	SELECT invoice_id, room_id, month, total_amount, paid_status 
+	FROM invoices 
+	WHERE room_id = 301;
+
+-- CASE 5: chốt hóa đơn cho tháng mới, không bị ảnh hưởng bởi hóa đơn tháng cũ
+	-- B1: Cập nhật lại sĩ số phòng 301 là 3
+  UPDATE rooms
+  SET current_occupancy = 3
+  WHERE room_id = 301;
+
+  -- B2: Tạo hóa đơn cho tháng mới (tháng 4)
+  INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new) 
+  VALUES (301, '2026-04-01', 80, 150, 7, 15);
+  
+  -- B3: Tính hóa đơn và kiểm tra
+  CALL sp_generate_monthly_invoices (301, '2026-04-01');
+  select * from invoices;
+  
+-- CASE 6: Không cho phép tính Chỉ số mới < Chỉ số cũ (phòng 101)
+-- mong đợi trả về 0
+  INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
+  VALUES (101, '2026-04-01', 30, 20, 3, 2);
+  
+  CALL sp_generate_monthly_invoices (101, '2026-04-01');
+  select * from invoices;
+
+-- CASE 7: Bảo vệ dữ liệu đã thanh toán
+-- mong đợi không cho phép ghi đè lên hóa đơn đã thanh toán, nếu có cập nhật sau khi đã thanh toán
+  -- B1: Cập nhật trạng thái thanh toán là 'paid'
+  UPDATE invoices
+  SET paid_status = 'paid'
+  WHERE room_id = 101 AND month = '2026-03-01'
+
+  -- B2: Cập nhật số điện từ 30 lên 100 số
+  UPDATE meter_readings 
+  SET electric_new = 100 
+  WHERE room_id = 101 AND month = '2026-03-01';
+  
+  -- B3: Gọi procedure tính tiền lại và kiểm tra không bị ghi đè
+  CALL sp_generate_monthly_invoices (101, '2026-03-01');
+  select * from invoices 
+  where room_id = 101 and month = '2026-03-01';
