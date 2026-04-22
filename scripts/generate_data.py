@@ -10,7 +10,26 @@ from unidecode import unidecode
 
 class VietnameseNameProvider(BaseProvider):
     def vn_first_name(self):
-        return random.choice(["Huy", "Linh", "Trang", "Minh"])
+        first_names = [
+            "An", "Anh", "Bình", "Bảo", "Cường", "Chi", "Chương", "Dũng", "Dương", "Duy", 
+            "Đạt", "Đông", "Giang", "Hà", "Hải", "Hạnh", "Hiếu", "Hiền", "Hoa", "Hùng", 
+            "Huy", "Hương", "Hường", "Huyền", "Khang", "Khánh", "Khoa", "Kiên", "Lan", "Linh", 
+            "Long", "Lâm", "Lộc", "Mai", "Minh", "Nam", "Nghĩa", "Ngân", "Ngọc", "Nhi", 
+            "Nhung", "Oanh", "Phong", "Phúc", "Phương", "Quân", "Quang", "Quốc", "Quỳnh", "Sơn", 
+            "Thảo", "Thắng", "Thịnh", "Thông", "Thu", "Thành", "Thảo", "Thủy", "Tiến", "Trâm", 
+            "Trang", "Trung", "Trình", "Tú", "Tuấn", "Tùng", "Tuyết", "Vinh", "Việt", "Vy", "Yến"
+        ]
+        return random.choice(first_names)
+        
+    
+    def vn_last_name(self):
+        last_names = [
+            "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Phan", "Vũ", "Đặng", "Bùi", "Đỗ", 
+            "Hồ", "Ngô", "Dương", "Lý", "Vương", "Trịnh", "Đoàn", "Lâm", "Phùng", "Mai", 
+            "Tô", "Trương", "Hà", "Tạ", "Cao", "Khổng", "Quách"
+        ]
+        return random.choice(last_names)
+        
 
 fake = Faker('vi_VN')
 fake.add_provider(VietnameseNameProvider)
@@ -32,7 +51,7 @@ def generated_students(n):
     
     for _ in range(n):
         first_name = fake.vn_first_name()
-        last_name = fake.last_name()
+        last_name = fake.vn_last_name()
         student_code = fake.unique.bothify(text='#####')
         prefix = random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
         full_student_code = prefix + student_code
