@@ -42,6 +42,9 @@ services:
       - mysql-slave
     env_file:
       - .env
+    environment: 
+      - DB_MASTER_URL=mysql+pymysql://root:123456@mysql-master:3306/dormitory_management
+      - DB_SLAVE_URL=mysql+pymysql://root:123456@mysql-slave:3306/dormitory_management
     networks:
       - internal_db_net
     volumes:
