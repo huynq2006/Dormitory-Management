@@ -12,7 +12,7 @@ def get_connection(host_env): # sửa hàm _get_connection thành get_connection
     """
     return pymysql.connect(
         host=os.getenv(host_env),
-        user='root',
+        user=os.getenv('MYSQL_USER'),
         password=os.getenv('MYSQL_PASSWORD'),
         database=os.getenv('MYSQL_DATABASE'),
         port=int(os.getenv('DB_PORT', 3306)),

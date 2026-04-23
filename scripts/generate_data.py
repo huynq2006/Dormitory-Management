@@ -174,19 +174,22 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
         
     return contracts
 
+def _subtract_months(first_day_of_month, months):
+     total_months = first_day_of_month.year * 12 + (first_day_of_month.month - 1) - months
+     year = total_months // 12
+     month = total_months % 12 + 1
+     return date(year, month, 1)
+
 def generated_meter_readings(all_room_ids, months_back=3):
     meter_readings = []
     today = date.today()
+    first_day_this_month = today.replace(day=1)
     
     for room_id in all_room_ids:
         for i in range(months_back):
             # 1. Calculate the month in YYYY-MM-01 format
-            y = today.year
-            m = today.month - i
-            while m <= 0:
-                m += 12
-                y -= 1
-            reading_month = date(y, m, 1)
+            # Get the first day of the current month, then subtract i calendar months
+            reading_month = _subtract_months(first_day_this_month, i)
             
             # 2. Generate electricity readings (Ensure electric_new >= electric_old)
             electric_old = random.randint(1000, 5000)
