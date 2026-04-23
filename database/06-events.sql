@@ -1,3 +1,4 @@
+SET GLOBAL event_scheduler = ON;
 
 -- 1. Event scheduler evt_monthly_billing_process
 DELIMITER // 
@@ -17,10 +18,15 @@ BEGIN
 		ROLLBACK; 
 		CALL sp_add_audit_log ('EVENT_SCHEDULE', 'ERROR', 'System error during monthly billing process', 'SQL_ERROR');
 	END; 
+
+	START TRANSACTION; 
+
 	SET v_target_month = DATE_FORMAT(CURRENT_DATE - INTERVAL 1 MONTH, '%Y-%m-01'); 
 	CALL sp_add_audit_log('EVENT_SCHEDULE', 'START_BILLING', CONCAT('Starting invoice generation for: ', v_target_month), NULL);
 
 	CALL sp_generate_monthly_invoices(NULL, v_target_month);
+
+	COMMIT; 
 END // 
 
 DELIMITER ; 

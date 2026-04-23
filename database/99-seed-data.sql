@@ -161,3 +161,5 @@ VALUES (1001, 102, CURDATE(), 'active');
 SELECT 'BR-02: Room 102 sau khi thử insert contract thứ 2' AS test_step,
        room_id, current_occupancy, status FROM rooms WHERE room_id = 102;
 -- Expected: current_occupancy=0 (không đổi)
+
+--------------------------------------------------------------------------------
