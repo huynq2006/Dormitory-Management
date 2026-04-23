@@ -93,6 +93,7 @@ SELECT 'BR-02: Room 102 sau khi thử insert contract thứ 2' AS test_step,
        room_id, current_occupancy, status FROM rooms WHERE room_id = 102;
 -- Expected: current_occupancy=0 (không đổi)
 
+<<<<<<< HEAD
 --------------------------------------------------------------------------------
 -- Week 3: TEST PROCEDURE sp_generate_monthly_invoices + audit_log
 -- 1. xóa dữ liệu cũ
@@ -231,3 +232,6 @@ call sp_generate_monthly_invoices (301, '2026-03-15');
   CALL sp_generate_monthly_invoices (101, '2026-03-01');
   select * from invoices 
   where room_id = 101 and month = '2026-03-01';
+=======
+--------------------------------------------------------------------------------
+>>>>>>> f54e62fe9e3950d43cd450399b3d14d606d842d3
