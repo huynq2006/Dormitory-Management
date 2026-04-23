@@ -1,32 +1,44 @@
 import os
 import pymysql
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 # Load environment variables from .env (once)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-def _get_connection(host_env):
-    """
-    Internal private function to initialize a standard database connection.
-    Retrieves credentials dynamically from environment variables.
-    """
-    return pymysql.connect(
-        host=os.getenv(host_env),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        database=os.getenv('MYSQL_DATABASE'),
-        port=int(os.getenv('DB_PORT', 3306)),
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+def _get_connection(url_env):
+    # Retrieve the complete database connection URL from environment variables
+    db_url = os.getenv(url_env)
+    
+    if not db_url:
+        raise ValueError(f"Error: {url_env} environment variable is missing!")
+
+    # Parse the connection URL to extract individual credentials
+    parsed = urlparse(db_url)
+
+    # Establish and return the PyMySQL connection using extracted parameters
+    try:
+        return pymysql.connect(
+            host=parsed.hostname,              # e.g., 'mysql-master'
+            user=parsed.username,              # e.g., 'app_user'
+            password=parsed.password,          # e.g., 'App_Pass@123'
+            database=parsed.path.lstrip('/'),  # Remove the leading slash from the path
+            port=parsed.port or 3306,          # Fallback to default MySQL port if missing
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    except pymysql.Error as e:
+        # Catch network/authentication errors early for clear logging
+        print(f"[CONNECTION ERROR] Cannot connect to DB via {url_env}: {e}")
+        raise e
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
-    return _get_connection('DB_SLAVE_HOST')
+    return _get_connection('DB_SLAVE_URL')
 
 def get_master_connection():
     """Returns a connection to the Primary Database (Master)."""
-    return _get_connection('DB_MASTER_HOST')
+    return _get_connection('DB_MASTER_URL')
 
 def fetch_data(query, params=None):
     """
