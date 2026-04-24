@@ -101,7 +101,7 @@ BEGIN
     END IF;
     
     IF p_effective_date <> LAST_DAY(CURDATE()) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end, effective date must be the last day of current month';
     END IF;
 
     -- End old contract and create new one
