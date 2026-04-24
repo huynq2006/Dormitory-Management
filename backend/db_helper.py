@@ -2,6 +2,8 @@ import os
 import pymysql
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from datetime import datetime
+import calendar
 
 # Load environment variables from .env (once)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -81,3 +83,34 @@ def fetch_rooms():
     Query room list (for dashboard/frontend).
     """
     return fetch_data("SELECT * FROM rooms")
+
+def fetch_overdue():
+    query = """
+        SELECT * FROM invoices 
+        WHERE paid_status = 'overdue' 
+           OR (paid_status = 'unpaid' AND due_date < CURDATE())
+    """
+    return fetch_data(query)
+
+def generate_monthly_invoices():
+    today = datetime.today()
+    first_day_of_month = f"{today.year}-{today.month:02d}-01"
+
+    query = "CALL sp_generate_monthly_invoices(%s, %s)"
+    return execute_write(query, (None, first_day_of_month))
+
+def fetch_current_month_invoices():
+    """Print this month's invoice to the screen."""
+    today = datetime.today()
+    first_day_of_month = f"{today.year}-{today.month:02d}-01"
+    
+    query = "SELECT * FROM invoices WHERE month = %s"
+    return fetch_data(query, (first_day_of_month,))
+
+def transfer_student(student_id, new_room_id):
+    today = datetime.today()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    effective_date = f"{today.year}-{today.month:02d}-{last_day:02d}"
+    
+    query = "CALL sp_transfer_room(%s, %s, %s)"
+    return execute_write(query, (student_id, new_room_id, effective_date))

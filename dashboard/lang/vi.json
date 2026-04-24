@@ -1,20 +1,23 @@
 {
-  "sidebar": {
-    "overview": "Tổng quan",
-    "rooms": "Quản lý phòng",
-    "sql_workspace": "SQL Workspace",
-    "settings": "Cài đặt"
-  },
-  "settings": {
-    "language": "Ngôn ngữ",
-    "role": "Vai trò"
-  },
-  "roles": {
-    "admin": "Quản trị viên",
-    "manager": "Ban quản lý",
-    "student": "Sinh viên"
-  },
-  "rooms": {
-    "title": "Danh sách phòng"
-  }
+    "settings": {
+        "language": "Chọn ngôn ngữ",
+        "role": "Chọn vai trò"
+    },
+    "roles": {
+        "admin": "Quản trị viên",
+        "manager": "Quản lý",
+        "student": "Sinh viên"
+    },
+    "sidebar": {
+        "overview": "Tổng quan",
+        "rooms": "Quản lý phòng",
+        "transfer": "Chuyển phòng / Giao dịch",
+        "invoices": "Tạo hóa đơn",
+        "overdue": "Nợ quá hạn",
+        "sql_workspace": "SQL Workspace",
+        "settings": "Cài đặt"
+    },
+    "rooms": {
+        "title": "Danh sách phòng ký túc xá"
+    }
 }
