@@ -7,6 +7,9 @@ ADD INDEX idx_invoices_due_status (due_date, paid_status);
 ALTER TABLE invoices
 ADD INDEX idx_invoices_covering (due_date, paid_status, room_id, month, total_amount);
 
+ALTER TABLE students
+ADD INDEX idx_student_status(status);
+
 ALTER TABLE invoices
 ADD INDEX idx_invoices_optimized (paid_status, due_date, room_id, month, total_amount);
 
