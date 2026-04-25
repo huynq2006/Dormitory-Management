@@ -27,16 +27,18 @@ VALUES
 (112, '2026-04-01', 200, 250, 40, 70), 
 (113, '2026-04-01', 105, 220, 30, 80);
 
--- Test 1: Kiểm tra Event ghi vào audit_log 
-SELECT * 
-FROM audit_log; 
+-- Manual test queries/state changes moved out of automatic seed execution.
+-- Keep these commented out here or move them to a separate manual test script.
+-- Test 1: Kiểm tra Event ghi vào audit_log
+-- SELECT *
+-- FROM audit_log;
 
--- Test 2: Giả lập Server sập và Chạy lại 
--- Thay đổi giá phòng 111 xuống 1.100.000đ
-UPDATE rooms SET base_price = 1100000 WHERE room_id = 111;
+-- Test 2: Giả lập Server sập và Chạy lại
+-- Thay đổi giá phòng 101 xuống 1.100.000đ
+-- UPDATE rooms SET base_price = 1100000 WHERE room_id = 101;
 
-select * 
-from invoices; 
+-- SELECT *
+-- FROM invoices;
 
 -- 2. Set up initial data for testing triggers
 -- Rooms cho trigger test
