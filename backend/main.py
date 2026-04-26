@@ -73,5 +73,17 @@ def test_database_routing():
     except Exception as e:
         print(f"READ FAILED! Error: {e}\n")
 
+def cleanup_test_data():
+    print("STARTING CLEANUP PROCESS...")
+    try:
+        delete_query = "DELETE FROM audit_log WHERE actor = 'system_test' AND action = 'TEST_ROUTING'"
+        execute_write(delete_query)
+        print("CLEANUP SUCCESSFUL! Database is clean.\n")
+    except Exception as e:
+        print(f"CLEANUP FAILED! Error: {e}\n")
+
 if __name__ == "__main__":
-    test_database_routing()
+    try:
+        test_database_routing()
+    finally:
+        cleanup_test_data()
