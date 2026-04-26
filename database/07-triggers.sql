@@ -84,10 +84,10 @@ BEGIN
     -- case B: end contract (Always set to available)
     ELSEIF LOWER(OLD.status) = 'active' AND LOWER(NEW.status) IN ('ended', 'cancelled') THEN
         UPDATE rooms 
-        SET current_occupancy = GREATEST(current_occupancy - 1, 0),
+        SET current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0),
             status = Case
                when status = 'maintenance' then 'maintenance'
-               when GREATEST(current_occupancy -1, 0) >= capacity then 'full'
+               when GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0) >= capacity then 'full'
                else 'available'
 			end
         WHERE room_id = OLD.room_id;
@@ -103,7 +103,7 @@ BEGIN
     -- Only update occupancy if the deleted contract was active
     IF LOWER(OLD.status) = 'active' THEN
         UPDATE rooms 
-        SET current_occupancy = GREATEST(current_occupancy - 1, 0),
+        SET current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0),
         status = Case
            when status = 'maintenance' then 'maintenance'
            else 'available'
