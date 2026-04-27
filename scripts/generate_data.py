@@ -88,7 +88,7 @@ def generated_rooms(n):
         
         data = {
             "building" : random.choice(["Building A", "Building B", "Building C", "Building D"]),
-            "capacity": random.randint(1, 6),
+            "capacity": 5,
             "current_occupancy": 0,
             "base_price": round(random.uniform(50.0, 200.0), 2),
             "status": "available"
