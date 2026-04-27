@@ -2,7 +2,7 @@ import pymysql
 import os
 from db_helper import get_master_connection
 
-def transfer_student(student_id, new_room_id): 
+def transfer_student(student_id, new_room_id, effective_date): 
     connection = get_master_connection()
     
     if not connection:
@@ -20,7 +20,7 @@ def transfer_student(student_id, new_room_id):
                 if new_room_id == current_room:
                     return False, f"Student {student_id} is already in room {new_room_id}"
             
-            cursor.callproc('sp_transfer_room', [student_id, new_room_id])
+            cursor.callproc('sp_transfer_room', [student_id, new_room_id, effective_date])
             
             connection.commit()
             return True, f"Transfer student with ID {student_id} to room {new_room_id}"
@@ -44,7 +44,8 @@ def transfer_student(student_id, new_room_id):
 # Example: Room 101 has the capacity of 2
 # Result 
 if __name__ == "__main__":
-    transfer_student(3, 101)
+    transfer_student(3, 1, "2025-03-30")
+    
 from db_helper import fetch_data, execute_write
 
 def test_database_routing():
