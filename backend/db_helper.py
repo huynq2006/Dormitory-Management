@@ -55,9 +55,14 @@ def fetch_data(query, params=None):
             return result
     except Exception as e:
         print(f"[SLAVE READ ERROR]: {e}")
-        raise e
+        return [] 
+    except Exception as e:
+        print(f"[SYSTEM ERROR] Unexpected error during read operation: {e}")
+        return []
     finally:
-        conn.close()
+        # Ensure the connection exists before attempting to close it
+        if conn:
+            conn.close()
 
 def execute_write(query, params=None):
     """
@@ -72,11 +77,19 @@ def execute_write(query, params=None):
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
     except Exception as e:
-        conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
+        if conn:
+            conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
         print(f"[MASTER WRITE ERROR]: {e}")
-        raise e
+        return None 
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[SYSTEM ERROR] Unexpected error during write operation: {e}")
+        return None
+        
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def fetch_rooms():
     """
