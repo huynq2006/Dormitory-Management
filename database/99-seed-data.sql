@@ -3,11 +3,11 @@
 -- Organized by Test Cases 1 - 8
 -- ========================================================
 
-select count(room_id) from rooms;
-select count(student_id) from students;
-select count(contract_id) from contracts;
-select count(reading_id) from meter_readings;
-select count(invoice_id) from invoices;
+select * from rooms;
+select * from students;
+select distinct * from contracts;
+select * from meter_readings;
+select * from invoices;
 
 USE dormitory_management;
 
@@ -35,6 +35,8 @@ INSERT INTO students (student_id, student_code, first_name, last_name, gender, e
 (3002, 'SV3002', 'Bao', 'Hoang', 'M', 'bao@vnu.edu.vn', 1),
 (3003, 'SV3003', 'Chi', 'Vu', 'F', 'chi@vnu.edu.vn', 1);
 
+select * from rooms;
+
 -- --------------------------------------------------------
 -- TEST CASE 1: New Room is Full (Violation of BR-01)
 -- --------------------------------------------------------
@@ -57,6 +59,7 @@ CALL sp_transfer_room(1001, 101, '2026-03-31');
 -- TEST CASE 2: Room Available - Successful Transfer
 -- --------------------------------------------------------
 -- Setup: Room 102 has space
+
 INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
 VALUES (102, 'B', 4, 1, 1200000.00, 'available');
 
@@ -117,9 +120,9 @@ VALUES (301, 'T', 3, 0, 1300000.00, 'available');
 SELECT * FROM rooms WHERE room_id = 301;
 
 INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) VALUES 
-(5004, 3001, 301, '2026-03-01', 'active'),
-(5005, 3002, 301, '2026-03-01', 'active'),
-(5006, 3003, 301, '2026-03-01', 'active');
+(5006, 3001, 301, '2026-03-01', 'active'),
+(5007, 3002, 301, '2026-03-01', 'active'),
+(5008, 3003, 301, '2026-03-01', 'active');
 -- Step 1: Insert 3 active contracts (Room should become 'full')
  
 -- Step 2: Update 1 contract to 'ended' (Occupancy should decrease to 2, status 'available')\
