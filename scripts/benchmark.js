@@ -106,30 +106,29 @@ if (!MASTER_DB_STR || !SLAVE_DB_STR) {
     throw new Error('Missing MASTER_DB or SLAVE_DB. Run with k6 run -e MASTER_DB=... -e SLAVE_DB=...');
 }
 
+const masterDb = sql.open('mysql', MASTER_DB_STR);
+const slaveDb = sql.open('mysql', SLAVE_DB_STR);
+
 export function setup() {
     // We fetch some valid STUDENT_IDs and ROOM_IDs from the actual master DB to use in writes
-    let initDb = null;
     let students = [];
     let rooms = [];
     let todayString = "2026-04-30"; // Using static or dynamic end-of-month
 
     try {
-        initDb = sql.open('mysql', SLAVE_DB_STR);
         
-        let studentRows = sql.query(initDb, "SELECT student_id FROM students LIMIT 1000;");
+        let studentRows = sql.query(slaveDb, "SELECT student_id FROM students LIMIT 1000;");
         for (let row of studentRows) {
             students.push(row.student_id);
         }
         
-        let roomRows = sql.query(initDb, "SELECT room_id FROM rooms LIMIT 100;");
+        let roomRows = sql.query(slaveDb, "SELECT room_id FROM rooms LIMIT 100;");
         for (let row of roomRows) {
             rooms.push(row.room_id);
         }
     } catch (e) {
         console.error(`Setup Error: Could not connect or fetch data - ${e.message}`);
-    } finally {
-        if (initDb) { initDb.close(); }
-    }
+    } 
 
     const d = new Date();
     // Default to the last day of the current month for effective_date
@@ -144,20 +143,17 @@ export function setup() {
 }
 
 export function read_workload(data) {
-    const db = sql.open('mysql', SLAVE_DB_STR);
     const startTime = Date.now();
     let success = false;
     
     try {
         // Query as defined in benchmark-scenario.md
-        sql.query(db, "SELECT * FROM vw_overdue_debtors ORDER BY days_overdue DESC LIMIT 200;");
+        sql.query(slaveDb, "SELECT * FROM vw_overdue_debtors ORDER BY days_overdue DESC LIMIT 200;");
         success = true;
     } catch (err) {
         success = false;
         console.error("Read Error: " + err.message);
-    } finally {
-        db.close();
-    }
+    } 
     
     // Check assertion for reporting
     check(success, {
@@ -174,7 +170,6 @@ export function read_workload(data) {
 }
 
 export function write_workload(data) {
-    const db = sql.open('mysql', MASTER_DB_STR);
     const startTime = Date.now();
     let success = false;
     
@@ -184,7 +179,7 @@ export function write_workload(data) {
         
         // Try sp_transfer_room. This can fail/rollback due to specific rules, but the DB still handles the load.
         // It simulates actual transaction workloads.
-        sql.exec(db, `CALL sp_transfer_room(${studentId}, ${roomId}, '${data.effectiveDate}');`);
+        sql.exec(masterDb, `CALL sp_transfer_room(${studentId}, ${roomId}, '${data.effectiveDate}');`);
         success = true;
     } catch (err) {
         let errorStr = err.message || "";
@@ -197,9 +192,7 @@ export function write_workload(data) {
             success = false;
             console.error("Write DB Crash/Error: " + errorStr);
         }
-    } finally {
-        db.close();
-    }
+    } 
     
     // Check assertion for reporting
     check(success, {
@@ -213,5 +206,6 @@ export function write_workload(data) {
 }
 
 export function teardown(data) {
-    // Left empty since connections are now closed gracefully per VU request
+    masterDb.close();
+    slaveDb.close();
 }

@@ -1,6 +1,7 @@
 import os
 import pymysql
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 # Load environment variables from .env (once)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -30,7 +31,7 @@ def _get_connection(url_env):
         # Catch network/authentication errors early for clear logging
         print(f"[CONNECTION ERROR] Cannot connect to DB via {url_env}: {e}")
         raise e
-from dotenv import load_dotenv
+
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
