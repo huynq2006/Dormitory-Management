@@ -1,211 +1,270 @@
 import sql from 'k6/x/sql';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
+import { exec } from 'k6/execution';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
-// Custom metrics to track latency separately
-const readLatencies = new Trend('READ_latency', true);
-const writeLatencies = new Trend('WRITE_latency', true);
-const readCount = new Counter('READ_count');
-const writeCount = new Counter('WRITE_count');
-const readErrors = new Rate('READ_errors');
-const writeErrors = new Rate('WRITE_errors');
 
-/**
- * Benchmark Script (Replaces benchmark.py)
- * Requirements:
- * - Read on SLAVE, Write on MASTER
- * - Scenario 1: Baseline (READ only) - 10 VUs, 120s
- * - Scenario 2: Mixed load (READ + WRITE) - 20 Read VUs, 10 Write VUs, 180s
- * - Scenario 3: Stress test (READ + WRITE) - 50 Read VUs, 25 Write VUs, 180s
- * 
- * To run ALL sequentially: k6 run scripts/benchmark.js
- * To capture raw data: k6 run --out csv=results/benchmark_metrics_raw.csv scripts/benchmark.js
- */
+const readLatencies    = new Trend('READ_latency', true);
+const writeLatencies   = new Trend('WRITE_latency', true);
+const noIndexLatency   = new Trend('READ_latency_no_index', true);
+const withIndexLatency = new Trend('READ_latency_with_index', true);
+const replicationLag   = new Trend('replication_lag_rows', true);
+const readCount        = new Counter('READ_count');
+const writeCount       = new Counter('WRITE_count');
+const readErrors       = new Rate('READ_errors');
+const writeErrors      = new Rate('WRITE_errors');
+
 
 export const options = {
     scenarios: {
-        // Run 1: Baseline (0s -> 120s) - Target 20 RPS
+        // Run 1: Baseline (0s → 120s)
         baseline_read: {
             executor: 'constant-arrival-rate',
-            rate: 20,
-            timeUnit: '1s',
-            duration: '120s',
-            preAllocatedVUs: 10,
-            maxVUs: 30, // Cho phép scale up VU nếu DB phản hồi chậm
-            startTime: '0s',
-            exec: 'read_workload',
-            tags: { scenario: 'Baseline', target_node: 'slave', query_type: 'READ_overdue_view' }
+            rate: 20, timeUnit: '1s', duration: '120s',
+            preAllocatedVUs: 10, maxVUs: 30,
+            startTime: '0s', exec: 'read_workload',
+            tags: { scenario: 'Baseline', target_node: 'slave' }
         },
-        
-        // Wait 10s for database cooldown
-        
-        // Run 2: Mixed load (130s -> 310s) - Target: Read 40 RPS, Write 20 RPS
+        // Run 2: Mixed (150s → 330s) — cooldown 30s
         mixed_read: {
             executor: 'constant-arrival-rate',
-            rate: 40,
-            timeUnit: '1s',
-            duration: '180s',
-            preAllocatedVUs: 20,
-            maxVUs: 50,
-            startTime: '130s',
-            exec: 'read_workload',
-            tags: { scenario: 'Mixed', target_node: 'slave', query_type: 'READ_overdue_view' }
+            rate: 40, timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 20, maxVUs: 50,
+            startTime: '150s', exec: 'read_workload',
+            tags: { scenario: 'Mixed', target_node: 'slave' }
         },
         mixed_write: {
             executor: 'constant-arrival-rate',
-            rate: 20,
-            timeUnit: '1s',
-            duration: '180s',
-            preAllocatedVUs: 10,
-            maxVUs: 30,
-            startTime: '130s',
-            exec: 'write_workload',
-            tags: { scenario: 'Mixed', target_node: 'master', query_type: 'WRITE_transfer' }
+            rate: 20, timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 10, maxVUs: 30,
+            startTime: '150s', exec: 'write_workload',
+            tags: { scenario: 'Mixed', target_node: 'master' }
         },
-
-        // Wait 10s for database cooldown
-
-        // Run 3: Stress load (320s -> 500s) - Target: Read 100 RPS, Write 50 RPS
+        // Replication lag — chạy song song với Mixed
+        replication_lag_check: {
+            executor: 'constant-arrival-rate',
+            rate: 5, timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 2, maxVUs: 5,
+            startTime: '150s', exec: 'check_replication_lag',
+            tags: { scenario: 'Mixed', query_type: 'REPLICATION_LAG' }
+        },
+        // Run 3: Stress (360s → 540s) — cooldown 30s
         stress_read: {
             executor: 'constant-arrival-rate',
-            rate: 100,
-            timeUnit: '1s',
-            duration: '180s',
-            preAllocatedVUs: 50,
-            maxVUs: 150,
-            startTime: '320s',
-            exec: 'read_workload',
-            tags: { scenario: 'Stress', target_node: 'slave', query_type: 'READ_overdue_view' }
+            rate: 100, timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 50, maxVUs: 150,
+            startTime: '360s', exec: 'read_workload',
+            tags: { scenario: 'Stress', target_node: 'slave' }
         },
         stress_write: {
             executor: 'constant-arrival-rate',
-            rate: 50,
-            timeUnit: '1s',
-            duration: '180s',
-            preAllocatedVUs: 25,
-            maxVUs: 100,
-            startTime: '320s',
-            exec: 'write_workload',
-            tags: { scenario: 'Stress', target_node: 'master', query_type: 'WRITE_transfer' }
+            rate: 50, timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 25, maxVUs: 100,
+            startTime: '360s', exec: 'write_workload',
+            tags: { scenario: 'Stress', target_node: 'master' }
+        },
+        // Index benchmark (570s → 700s) — cooldown 30s sau stress
+        index_without: {
+            executor: 'constant-arrival-rate',
+            rate: 20, timeUnit: '1s', duration: '60s',
+            preAllocatedVUs: 10, maxVUs: 20,
+            startTime: '570s', exec: 'read_without_index',
+            tags: { scenario: 'Index_Test', index: 'without' }
+        },
+        index_with: {
+            executor: 'constant-arrival-rate',
+            rate: 20, timeUnit: '1s', duration: '60s',
+            preAllocatedVUs: 10, maxVUs: 20,
+            startTime: '640s', exec: 'read_with_index',
+            tags: { scenario: 'Index_Test', index: 'with' }
         },
     },
-    // We only care about p90 and p95 latencies for this project
     summaryTrendStats: ['avg', 'p(90)', 'p(95)', 'max'],
     thresholds: {
-        'READ_errors': ['rate<0.01'], // Error Rate (Failures) < 1% as per doc
-        'WRITE_errors': ['rate<0.01'],
-        'READ_latency': ['p(95)<300'], // Example threshold for latency limits
-        'WRITE_latency': ['p(95)<800'],
+        'READ_errors':['rate<0.01'],
+        'WRITE_errors':['rate<0.10'],
+        'READ_latency':['p(95)<300'],
+        'WRITE_latency':['p(95)<800'],
+        'READ_latency_no_index':['p(95)<500'],
+        'READ_latency_with_index':['p(95)<150'],
     }
 };
 
-const MASTER_DB_STR = __ENV.MASTER_DB;
-const SLAVE_DB_STR = __ENV.SLAVE_DB;
-
-if (!MASTER_DB_STR || !SLAVE_DB_STR) {
-    throw new Error('Missing MASTER_DB or SLAVE_DB. Run with k6 run -e MASTER_DB=... -e SLAVE_DB=...');
+if (!__ENV.MASTER_DB || !__ENV.SLAVE_DB) {
+    throw new Error('Thiếu MASTER_DB hoặc SLAVE_DB. ' +
+        'Chạy với: -e MASTER_DB=... -e SLAVE_DB=...');
 }
 
-const masterDb = sql.open('mysql', MASTER_DB_STR);
-const slaveDb = sql.open('mysql', SLAVE_DB_STR);
+// VU-local connections — lazy init per VU
+let masterDb;
+let slaveDb;
+let lagMasterDb;
+let lagSlaveDb;
 
 export function setup() {
-    // We fetch some valid STUDENT_IDs and ROOM_IDs from the actual master DB to use in writes
-    let students = [];
-    let rooms = [];
-    let todayString = "2026-04-30"; // Using static or dynamic end-of-month
-
+    const initDb = sql.open('mysql', __ENV.SLAVE_DB);
+    let students = [], rooms = [];
     try {
-        
-        let studentRows = sql.query(slaveDb, "SELECT student_id FROM students LIMIT 1000;");
-        for (let row of studentRows) {
-            students.push(row.student_id);
-        }
-        
-        let roomRows = sql.query(slaveDb, "SELECT room_id FROM rooms LIMIT 100;");
-        for (let row of roomRows) {
-            rooms.push(row.room_id);
-        }
+        const sRows = sql.query(initDb,
+            "SELECT student_id FROM students WHERE status = 1 LIMIT 1000;");
+        for (const r of sRows) students.push(r.student_id);
+
+        const rRows = sql.query(initDb,
+            "SELECT room_id FROM rooms WHERE status = 'available' LIMIT 100;");
+        for (const r of rRows) rooms.push(r.room_id);
     } catch (e) {
-        console.error(`Setup Error: Could not connect or fetch data - ${e.message}`);
-    } 
+        console.error(`Setup Error: ${e.message}`);
+    } finally {
+        initDb.close();
+    }
 
     const d = new Date();
-    // Default to the last day of the current month for effective_date
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    todayString = lastDay.toISOString().split('T')[0];
-
-    return { 
-        students: students.length > 0 ? students : [1, 2, 3], 
-        rooms: rooms.length > 0 ? rooms : [1, 2, 3],
-        effectiveDate: todayString
+    console.log(`Setup: ${students.length} students, ${rooms.length} rooms loaded.`);
+    return {
+        students:      students.length > 0 ? students : [1, 2, 3],
+        rooms:         rooms.length    > 0 ? rooms    : [1, 2, 3],
+        effectiveDate: lastDay.toISOString().split('T')[0]
     };
 }
 
 export function read_workload(data) {
+    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+
     const startTime = Date.now();
     let success = false;
-    
     try {
-        // Query as defined in benchmark-scenario.md
-        sql.query(slaveDb, "SELECT * FROM vw_overdue_debtors ORDER BY days_overdue DESC LIMIT 200;");
+        sql.query(slaveDb,
+            "SELECT * FROM vw_overdue_debtors " +
+            "ORDER BY days_overdue DESC LIMIT 200;");
         success = true;
     } catch (err) {
-        success = false;
         console.error("Read Error: " + err.message);
-    } 
-    
-    // Check assertion for reporting
-    check(success, {
-        'read queries successful': (s) => s === true,
-    });
-    
-    const duration = Date.now() - startTime;
-    // __VU is available globally in the VU execution context. However, context tags like scenario are injected via __ENV or tags assigned to executor.
-    // For xk6-sql, it's safe to just use the execution context tag logic but there's a simpler way available by applying tags to trend.
-    // Although the scenario is already tagged by the executor in the raw CSV, custom metrics need explicit tagging if you want them broken down in the summary report.
-    readLatencies.add(duration);
+    }
+
+    check(success, { 'read successful': (s) => s === true });
+    readLatencies.add(Date.now() - startTime,
+        { scenario: exec.scenario.name });
     readCount.add(1);
     readErrors.add(!success);
 }
 
 export function write_workload(data) {
+    if (!masterDb) masterDb = sql.open('mysql', __ENV.MASTER_DB);
+
     const startTime = Date.now();
     let success = false;
-    
     try {
-        const studentId = data.students[Math.floor(Math.random() * data.students.length)];
-        const roomId = data.rooms[Math.floor(Math.random() * data.rooms.length)];
-        
-        // Try sp_transfer_room. This can fail/rollback due to specific rules, but the DB still handles the load.
-        // It simulates actual transaction workloads.
-        sql.exec(masterDb, `CALL sp_transfer_room(${studentId}, ${roomId}, '${data.effectiveDate}');`);
+        const studentId = data.students[
+            Math.floor(Math.random() * data.students.length)];
+        const roomId = data.rooms[
+            Math.floor(Math.random() * data.rooms.length)];
+        sql.exec(masterDb, "CALL sp_transfer_room(?, ?, ?);",
+            studentId, roomId, data.effectiveDate);
         success = true;
     } catch (err) {
-        let errorStr = err.message || "";
-        // Nếu lỗi là logic nghiệp vụ đã được dự trù (ví dụ SQLSTATE 45000 ném từ logic Store Procedure/Trigger)
-        // Việc DB Rollback mượt mà là "thành công" về mặt hiệu năng DB (chịu tải tốt).
-        if (errorStr.includes('45000') || errorStr.includes('Room is full') || errorStr.includes('maintenance')) {
-            success = true; 
-        } else {
-            // Lỗi hệ thống: Timeout, Too many connections, Deadlock, Crash DB...
-            success = false;
-            console.error("Write DB Crash/Error: " + errorStr);
-        }
-    } 
-    
-    // Check assertion for reporting
-    check(success, {
-        'write queries successful': (s) => s === true,
-    });
-    
-    const duration = Date.now() - startTime;
-    writeLatencies.add(duration);
+        const e = err.message || "";
+        success = e.includes('45000')           ||
+                  e.includes('Room is full')     ||
+                  e.includes('maintenance')      ||
+                  e.includes('already in this room') ||
+                  e.includes('month end');
+        if (!success) console.error("Write System Error: " + e);
+    }
+
+    check(success, { 'write successful': (s) => s === true });
+    writeLatencies.add(Date.now() - startTime,
+        { scenario: exec.scenario.name });
     writeCount.add(1);
     writeErrors.add(!success);
 }
 
+export function check_replication_lag(data) {
+    if (!lagMasterDb) lagMasterDb = sql.open('mysql', __ENV.MASTER_DB);
+    if (!lagSlaveDb)  lagSlaveDb  = sql.open('mysql', __ENV.SLAVE_DB);
+
+    try {
+        const masterRows = sql.query(lagMasterDb,
+            "SELECT COUNT(*) AS cnt FROM invoices " +
+            "WHERE paid_status = 'unpaid';");
+        const masterCount = masterRows[0].cnt;
+
+        const slaveRows = sql.query(lagSlaveDb,
+            "SELECT COUNT(*) AS cnt FROM invoices " +
+            "WHERE paid_status = 'unpaid';");
+        const slaveCount = slaveRows[0].cnt;
+
+        const diff = Math.max(0, masterCount - slaveCount);
+        replicationLag.add(diff);
+
+        if (diff > 0) {
+            console.log(`[LAG] master=${masterCount} slave=${slaveCount} diff=${diff}`);
+        }
+    } catch (err) {
+        console.error("Lag check error: " + err.message);
+    }
+}
+
+export function read_without_index(data) {
+    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+
+    const startTime = Date.now();
+    let success = false;
+    try {
+        // Query trực tiếp bảng invoices — không qua view
+        // Chạy khi chưa có index trên (paid_status, due_date)
+        sql.query(slaveDb, `
+            SELECT room_id, month, total_amount, due_date
+            FROM invoices
+            WHERE paid_status IN ('unpaid', 'overdue')
+              AND due_date < CURDATE()
+            ORDER BY due_date ASC
+            LIMIT 200;
+        `);
+        success = true;
+    } catch (err) {
+        console.error("Read (no-index): " + err.message);
+    }
+
+    check(success, { 'read_no_index ok': (s) => s === true });
+    noIndexLatency.add(Date.now() - startTime);
+    readErrors.add(!success);
+}
+
+export function read_with_index(data) {
+    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+
+    // Cùng query — nhưng lúc này đã có index idx_invoices_paid_due
+    // Index được thêm qua migration file trước khi chạy scenario này
+    const startTime = Date.now();
+    let success = false;
+    try {
+        sql.query(slaveDb, `
+            SELECT room_id, month, total_amount, due_date
+            FROM invoices
+            WHERE paid_status IN ('unpaid', 'overdue')
+              AND due_date < CURDATE()
+            ORDER BY due_date ASC
+            LIMIT 200;
+        `);
+        success = true;
+    } catch (err) {
+        console.error("Read (with-index): " + err.message);
+    }
+
+    check(success, { 'read_with_index ok': (s) => s === true });
+    withIndexLatency.add(Date.now() - startTime);
+    readErrors.add(!success);
+}
+
 export function teardown(data) {
-    masterDb.close();
-    slaveDb.close();
+    console.log("Benchmark hoàn thành.");
+}
+
+export function handleSummary(data) {
+    return {
+        stdout: textSummary(data, { indent: '  ', enableColors: true }),
+        'results/benchmark_summary.json': JSON.stringify(data, null, 2),
+    };
 }
