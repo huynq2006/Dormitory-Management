@@ -14,6 +14,7 @@ const readCount        = new Counter('READ_count');
 const writeCount       = new Counter('WRITE_count');
 const readErrors       = new Rate('READ_errors');
 const writeErrors      = new Rate('WRITE_errors');
+const writeBusinessRejects = new Counter('WRITE_business_rejects');
 
 
 export const options = {
@@ -42,10 +43,12 @@ export const options = {
             tags: { scenario: 'Mixed', target_node: 'master' }
         },
         // Replication lag — chạy song song với Mixed
+       
         replication_lag_check: {
             executor: 'constant-arrival-rate',
-            rate: 5, timeUnit: '1s', duration: '180s',
-            preAllocatedVUs: 2, maxVUs: 5,
+            rate: 2,  // Giảm từ 5 xuống 2 req/s — đủ để quan sát, không gây nhiễu
+            timeUnit: '1s', duration: '180s',
+            preAllocatedVUs: 1, maxVUs: 2,  // Giảm VU
             startTime: '150s', exec: 'check_replication_lag',
             tags: { scenario: 'Mixed', query_type: 'REPLICATION_LAG' }
         },
@@ -71,6 +74,20 @@ export const options = {
             preAllocatedVUs: 10, maxVUs: 20,
             startTime: '570s', exec: 'read_without_index',
             tags: { scenario: 'Index_Test', index: 'without' }
+        },
+        drop_index: {
+            executor: 'shared-iterations',
+            vus: 1, iterations: 1,
+            startTime: '555s',  // 15s trước index_without để chắc chắn chạy xong
+            exec: 'drop_index_for_benchmark',
+            tags: { scenario: 'Index_Test' }
+        },
+        create_index: {
+            executor: 'shared-iterations',
+            vus: 1, iterations: 1,
+            startTime: '625s',  // 15s trước index_with
+            exec: 'create_index_for_benchmark',
+            tags: { scenario: 'Index_Test' }
         },
         index_with: {
             executor: 'constant-arrival-rate',
@@ -105,6 +122,7 @@ let lagSlaveDb;
 export function setup() {
     const initDb = sql.open(mysql, __ENV.SLAVE_DB);
     let students = [], rooms = [];
+    let effectiveDate = '';
     try {
         const sRows = initDb.query(
             "SELECT student_id FROM students WHERE status = 1 LIMIT 1000;");
@@ -113,19 +131,25 @@ export function setup() {
         const rRows = initDb.query(
             "SELECT room_id FROM rooms WHERE status = 'available' LIMIT 100;");
         for (const r of rRows) rooms.push(r.room_id);
+
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const endOfMonthDay = String(new Date(year, today.getMonth() + 1, 0).getDate()).padStart(2, '0');
+        effectiveDate = `${year}-${month}-${endOfMonthDay}`;
+
     } catch (e) {
         console.error(`Setup Error: ${e.message}`);
     } finally {
         initDb.close();
     }
 
-    const d = new Date();
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
     console.log(`Setup: ${students.length} students, ${rooms.length} rooms loaded.`);
     return {
         students:      students.length > 0 ? students : [1, 2, 3],
         rooms:         rooms.length    > 0 ? rooms    : [1, 2, 3],
-        effectiveDate: lastDay.toISOString().split('T')[0]
+        effectiveDate: effectiveDate || '2026-04-30'  // fallback nếu query fail
     };
 }
 
@@ -170,7 +194,13 @@ export function write_workload(data) {
                   e.includes('maintenance')      ||
                   e.includes('already in this room') ||
                   e.includes('month end');
-        if (!success) console.error("Write System Error: " + e);
+                  
+        if (success) {
+            // NẾU LÀ LỖI NGHIỆP VỤ THÌ TĂNG BIẾN ĐẾM NÀY LÊN 1
+            writeBusinessRejects.add(1); 
+        } else {
+            console.error("Write System Error: " + e);
+        }
     }
 
     check(success, { 'write successful': (s) => s === true });
@@ -181,25 +211,31 @@ export function write_workload(data) {
 }
 
 export function check_replication_lag(data) {
-    if (!lagMasterDb) lagMasterDb = sql.open(mysql, __ENV.MASTER_DB);
-    if (!lagSlaveDb)  lagSlaveDb  = sql.open(mysql, __ENV.SLAVE_DB);
+    // Chỉ cần kết nối Slave để đọc replication status
+    if (!lagSlaveDb) lagSlaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     try {
-        const masterRows = lagMasterDb.query(
-            "SELECT COUNT(*) AS cnt FROM invoices " +
-            "WHERE paid_status = 'unpaid';");
-        const masterCount = masterRows[0].cnt;
+        // Dùng SHOW REPLICA STATUS thay vì COUNT(*) trên bảng dữ liệu
+        // Không tạo thêm tải lên data tables, kết quả chính xác hơn
+        const rows = lagSlaveDb.query("SHOW REPLICA STATUS;");
 
-        const slaveRows = lagSlaveDb.query(
-            "SELECT COUNT(*) AS cnt FROM invoices " +
-            "WHERE paid_status = 'unpaid';");
-        const slaveCount = slaveRows[0].cnt;
+        if (rows.length === 0) {
+            console.warn("[LAG] Slave chưa được cấu hình replication");
+            return;
+        }
 
-        const diff = Math.max(0, masterCount - slaveCount);
-        replicationLag.add(diff);
+        // Seconds_Behind_Source: số giây slave đang chậm hơn master
+        // NULL = IO thread không chạy, 0 = đồng bộ hoàn toàn
+        const lag = rows[0].Seconds_Behind_Source;
 
-        if (diff > 0) {
-            console.log(`[LAG] master=${masterCount} slave=${slaveCount} diff=${diff}`);
+        if (lag === null) {
+            console.warn("[LAG] Replication IO thread không chạy");
+            replicationLag.add(-1);  // -1 = signal lỗi replication
+        } else {
+            replicationLag.add(lag * 1000);  // Đổi sang ms cho nhất quán với metrics khác
+            if (lag > 0) {
+                console.log(`[LAG] Seconds_Behind_Source = ${lag}s`);
+            }
         }
     } catch (err) {
         console.error("Lag check error: " + err.message);
@@ -256,6 +292,31 @@ export function read_with_index(data) {
     check(success, { 'read_with_index ok': (s) => s === true });
     withIndexLatency.add(Date.now() - startTime);
     readErrors.add(!success);
+}
+
+export function drop_index_for_benchmark(data) {
+    // Cần dùng Master vì DROP INDEX là DDL statement
+    if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
+    try {
+        masterDb.exec(
+            "ALTER TABLE invoices DROP INDEX idx_invoices_paid_due;");
+        console.log("[INDEX] Dropped idx_invoices_paid_due — ready for no-index benchmark");
+    } catch (err) {
+        // Index có thể không tồn tại — không sao
+        console.warn("[INDEX] Drop warning: " + err.message);
+    }
+}
+
+export function create_index_for_benchmark(data) {
+    if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
+    try {
+        masterDb.exec(
+            "ALTER TABLE invoices " +
+            "ADD INDEX idx_invoices_paid_due(paid_status, due_date);");
+        console.log("[INDEX] Created idx_invoices_paid_due — ready for with-index benchmark");
+    } catch (err) {
+        console.error("[INDEX] Create failed: " + err.message);
+    }
 }
 
 export function teardown(data) {

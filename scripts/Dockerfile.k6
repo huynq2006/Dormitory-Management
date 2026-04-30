@@ -1,5 +1,6 @@
 FROM golang:alpine AS builder
 RUN apk add --no-cache git
+# Dùng lại bản latest chuẩn như lúc đầu để tránh lỗi build do xk6 mới cập nhật
 RUN go install go.k6.io/xk6/cmd/xk6@latest
 RUN xk6 build \
     --with github.com/grafana/xk6-sql \
@@ -7,5 +8,7 @@ RUN xk6 build \
     --output /tmp/k6
 
 FROM alpine:3.18
+# Giữ lại gợi ý tốt của Copilot: Cài chứng chỉ mạng để file summary chạy mượt
+RUN apk add --no-cache ca-certificates
 COPY --from=builder /tmp/k6 /usr/bin/k6
 ENTRYPOINT ["k6"]
