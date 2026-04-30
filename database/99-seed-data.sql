@@ -1,3 +1,9 @@
+USE dormitory_management;
+
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE audit_log;
+TRUNCATE TABLE invoices; 
+TRUNCATE TABLE meter_readings;
 DROP TRIGGER IF EXISTS update_occupancy;
 DROP TRIGGER IF EXISTS trg_decrease_occupancy;
 -- Part 2: Test Trigger
@@ -7,8 +13,33 @@ SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE contracts;
 TRUNCATE TABLE rooms;
 TRUNCATE TABLE students;
-TRUNCATE TABLE audit_log;
+DELETE FROM rooms WHERE room_id IN (111, 112, 113);
 SET FOREIGN_KEY_CHECKS = 1;
+
+insert into rooms (room_id, capacity, current_occupancy,base_price, status) VALUES
+(111, 2, 2, 1500000, 'full'), -- phong binh thuong 
+(112, 4, 0, 1000000, 'available'), -- phong trong
+(113, 2, 0, 2000000,'maintenance'); -- phong trong + bao tri
+
+INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
+VALUES 
+(111, '2026-04-01', 100, 200, 50, 60), 
+(112, '2026-04-01', 200, 250, 40, 70), 
+(113, '2026-04-01', 105, 220, 30, 80);
+
+-- Manual test queries/state changes moved out of automatic seed execution.
+-- Keep these commented out here or move them to a separate manual test script.
+-- Test 1: Kiểm tra Event ghi vào audit_log
+-- SELECT *
+-- FROM audit_log;
+
+-- Test 2: Giả lập Server sập và Chạy lại
+-- Thay đổi giá phòng 101 xuống 1.100.000đ
+-- UPDATE rooms SET base_price = 1100000 WHERE room_id = 101;
+
+-- SELECT *
+-- FROM invoices;
+
 -- 2. Set up initial data for testing triggers
 -- Rooms cho trigger test
 INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status) VALUES
