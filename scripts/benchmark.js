@@ -1,9 +1,9 @@
 import sql from 'k6/x/sql';
 import { check } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
-import { exec } from 'k6/execution';
+import exec  from 'k6/execution';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
-
+import mysql from 'k6/x/sql/driver/mysql';
 
 const readLatencies    = new Trend('READ_latency', true);
 const writeLatencies   = new Trend('WRITE_latency', true);
@@ -103,14 +103,14 @@ let lagMasterDb;
 let lagSlaveDb;
 
 export function setup() {
-    const initDb = sql.open('mysql', __ENV.SLAVE_DB);
+    const initDb = sql.open(mysql, __ENV.SLAVE_DB);
     let students = [], rooms = [];
     try {
-        const sRows = sql.query(initDb,
+        const sRows = initDb.query(
             "SELECT student_id FROM students WHERE status = 1 LIMIT 1000;");
         for (const r of sRows) students.push(r.student_id);
 
-        const rRows = sql.query(initDb,
+        const rRows = initDb.query(
             "SELECT room_id FROM rooms WHERE status = 'available' LIMIT 100;");
         for (const r of rRows) rooms.push(r.room_id);
     } catch (e) {
@@ -130,12 +130,12 @@ export function setup() {
 }
 
 export function read_workload(data) {
-    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+    if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     const startTime = Date.now();
     let success = false;
     try {
-        sql.query(slaveDb,
+        slaveDb.query(
             "SELECT * FROM vw_overdue_debtors " +
             "ORDER BY days_overdue DESC LIMIT 200;");
         success = true;
@@ -151,7 +151,7 @@ export function read_workload(data) {
 }
 
 export function write_workload(data) {
-    if (!masterDb) masterDb = sql.open('mysql', __ENV.MASTER_DB);
+    if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
 
     const startTime = Date.now();
     let success = false;
@@ -160,7 +160,7 @@ export function write_workload(data) {
             Math.floor(Math.random() * data.students.length)];
         const roomId = data.rooms[
             Math.floor(Math.random() * data.rooms.length)];
-        sql.exec(masterDb, "CALL sp_transfer_room(?, ?, ?);",
+        masterDb.exec("CALL sp_transfer_room(?, ?, ?);",
             studentId, roomId, data.effectiveDate);
         success = true;
     } catch (err) {
@@ -181,16 +181,16 @@ export function write_workload(data) {
 }
 
 export function check_replication_lag(data) {
-    if (!lagMasterDb) lagMasterDb = sql.open('mysql', __ENV.MASTER_DB);
-    if (!lagSlaveDb)  lagSlaveDb  = sql.open('mysql', __ENV.SLAVE_DB);
+    if (!lagMasterDb) lagMasterDb = sql.open(mysql, __ENV.MASTER_DB);
+    if (!lagSlaveDb)  lagSlaveDb  = sql.open(mysql, __ENV.SLAVE_DB);
 
     try {
-        const masterRows = sql.query(lagMasterDb,
+        const masterRows = lagMasterDb.query(
             "SELECT COUNT(*) AS cnt FROM invoices " +
             "WHERE paid_status = 'unpaid';");
         const masterCount = masterRows[0].cnt;
 
-        const slaveRows = sql.query(lagSlaveDb,
+        const slaveRows = lagSlaveDb.query(
             "SELECT COUNT(*) AS cnt FROM invoices " +
             "WHERE paid_status = 'unpaid';");
         const slaveCount = slaveRows[0].cnt;
@@ -207,14 +207,14 @@ export function check_replication_lag(data) {
 }
 
 export function read_without_index(data) {
-    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+    if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     const startTime = Date.now();
     let success = false;
     try {
         // Query trực tiếp bảng invoices — không qua view
         // Chạy khi chưa có index trên (paid_status, due_date)
-        sql.query(slaveDb, `
+        slaveDb.query(`
             SELECT room_id, month, total_amount, due_date
             FROM invoices
             WHERE paid_status IN ('unpaid', 'overdue')
@@ -233,14 +233,14 @@ export function read_without_index(data) {
 }
 
 export function read_with_index(data) {
-    if (!slaveDb) slaveDb = sql.open('mysql', __ENV.SLAVE_DB);
+    if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     // Cùng query — nhưng lúc này đã có index idx_invoices_paid_due
     // Index được thêm qua migration file trước khi chạy scenario này
     const startTime = Date.now();
     let success = false;
     try {
-        sql.query(slaveDb, `
+        slaveDb.query(`
             SELECT room_id, month, total_amount, due_date
             FROM invoices
             WHERE paid_status IN ('unpaid', 'overdue')
