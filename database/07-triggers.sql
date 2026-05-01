@@ -61,14 +61,14 @@ FOR EACH ROW
 BEGIN
     IF LOWER(NEW.status) = 'active' THEN
         UPDATE rooms
-        SET current_occupancy = current_occupancy + 1,
-            status = IF(current_occupancy >= capacity, 'full', 'available')
+        SET status = IF((current_occupancy + 1) >= capacity, 'full', 'available'),
+            current_occupancy = current_occupancy + 1
         WHERE room_id = NEW.room_id;
         call sp_add_audit_log(USER(), 'INSERT_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' inserted'), 'SUCCESS');
     END IF;
 END //
 
--- 2. Trigger after Update on contracts (support test case 2: new room is available, change room successfully. test case 6: update contract to end it, occupancy should decrease and room status should update)
+-- 3. Trigger after Update on contracts (support test case 2: new room is available, change room successfully. test case 6: update contract to end it, occupancy should decrease and room status should update)
 CREATE TRIGGER trg_contracts_after_update
 AFTER UPDATE ON contracts
 FOR EACH ROW
@@ -76,22 +76,26 @@ BEGIN
     -- case A: activate contract 
     IF LOWER(OLD.status) <> 'active' AND LOWER(NEW.status) = 'active' THEN
         UPDATE rooms 
-        SET current_occupancy = current_occupancy + 1,
-            status = IF(current_occupancy >= capacity, 'full', 'available')
+        SET status = IF((current_occupancy + 1) >= capacity, 'full', 'available'),
+            current_occupancy = current_occupancy + 1
+        WHERE room_id = NEW.room_id;
+        CALL sp_add_audit_log(USER(), 'ACTIVATE_CONTRACT', CONCAT('Contract ', NEW.contract_id, ' activated'), 'SUCCESS');
+    
+    -- case B: end contract (Always set to available)
     ELSEIF LOWER(OLD.status) = 'active' AND LOWER(NEW.status) IN ('ended', 'cancelled') THEN
         UPDATE rooms 
-        SET current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0),
-            status = Case
+        SET status = Case
                when status = 'maintenance' then 'maintenance'
                when GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0) >= capacity then 'full'
                else 'available'
-			end
+			end,
+            current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0)
         WHERE room_id = OLD.room_id;
         CALL sp_add_audit_log(USER(), 'DEACTIVATE_CONTRACT', CONCAT('Contract ', OLD.contract_id, ' ended'), 'SUCCESS');
    END IF;
 END //
 
--- 3. Trigger after DELETE on contracts (Test Case 6 - incorrectly deleting a contract)
+-- 4. Trigger after DELETE on contracts (Test Case 6 - incorrectly deleting a contract)
 CREATE TRIGGER trg_contracts_after_delete
 AFTER DELETE ON contracts
 FOR EACH ROW
@@ -99,11 +103,11 @@ BEGIN
     -- Only update occupancy if the deleted contract was active
     IF LOWER(OLD.status) = 'active' THEN
         UPDATE rooms 
-        SET current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0),
-        status = Case
+        SET status = Case
            when status = 'maintenance' then 'maintenance'
            else 'available'
-           end
+           end,
+            current_occupancy = GREATEST(CAST(current_occupancy AS SIGNED) - 1, 0)
         WHERE room_id = OLD.room_id;    
 
         call sp_add_audit_log(USER(), 'DELETE_CONTRACT', CONCAT('Active contract ', OLD.contract_id, ' deleted. Occupancy restored.'), 'WARNING');
