@@ -88,6 +88,14 @@ BEGIN
     WHERE room_id = p_new_room_id 
     FOR UPDATE;
 
+    IF CURDATE() <> LAST_DAY(CURDATE()) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed exactly on the last day of the month';
+    END IF;
+    
+    IF p_effective_date <> LAST_DAY(CURDATE()) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end, effective date must be the last day of current month';
+    END IF;
+
     IF v_room_status = 'maintenance' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room under maintenance';
     END IF;
@@ -96,13 +104,6 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Room is full';
     END IF;
 
-    IF CURDATE() <> LAST_DAY(CURDATE()) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed exactly on the last day of the month';
-    END IF;
-    
-    IF p_effective_date <> LAST_DAY(CURDATE()) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end, effective date must be the last day of current month';
-    END IF;
 
     -- End old contract and create new one
     SET v_start_next_month = DATE_ADD(p_effective_date, INTERVAL 1 DAY);
