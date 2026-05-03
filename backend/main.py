@@ -1,9 +1,9 @@
 import pymysql
 import os
-from db_helper import get_connection
+from db_helper import get_master_connection
 
-def transfer_student(student_id, new_room_id): 
-    connection = get_connection()
+def transfer_student(student_id, new_room_id, effective_date): 
+    connection = get_master_connection()
     
     if not connection:
         return False, "Can't connect to database"    
@@ -20,7 +20,7 @@ def transfer_student(student_id, new_room_id):
                 if new_room_id == current_room:
                     return False, f"Student {student_id} is already in room {new_room_id}"
             
-            cursor.callproc('sp_transfer_room', [student_id, new_room_id])
+            cursor.callproc('sp_transfer_room', [student_id, new_room_id, effective_date])
             
             connection.commit()
             return True, f"Transfer student with ID {student_id} to room {new_room_id}"
@@ -44,7 +44,8 @@ def transfer_student(student_id, new_room_id):
 # Example: Room 101 has the capacity of 2
 # Result 
 if __name__ == "__main__":
-    transfer_student(3, 101)
+    transfer_student(3, 1, "2025-03-30")
+    
 from db_helper import fetch_data, execute_write
 
 def test_database_routing():
@@ -73,5 +74,17 @@ def test_database_routing():
     except Exception as e:
         print(f"READ FAILED! Error: {e}\n")
 
+def cleanup_test_data():
+    print("STARTING CLEANUP PROCESS...")
+    try:
+        delete_query = "DELETE FROM audit_log WHERE actor = 'system_test' AND action = 'TEST_ROUTING'"
+        execute_write(delete_query)
+        print("CLEANUP SUCCESSFUL! Database is clean.\n")
+    except Exception as e:
+        print(f"CLEANUP FAILED! Error: {e}\n")
+
 if __name__ == "__main__":
-    test_database_routing()
+    try:
+        test_database_routing()
+    finally:
+        cleanup_test_data()
