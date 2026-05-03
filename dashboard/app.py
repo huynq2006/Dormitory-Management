@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 
 # Import database interaction functions and role configuration 
-from db_helper import fetch_rooms, fetch_overdue, generate_monthly_invoices, transfer_student, fetch_current_month_invoices
+from db_helper import fetch_rooms, fetch_overdue, generate_monthly_invoices, transfer_student, fetch_current_month_invoices, fetch_data, execute_write
 from roles import ROLES
 
 # Function to load language JSON files
@@ -130,7 +130,40 @@ elif page == "transfer":
 
 elif page == "sql_workspace":
     st.header(lang["sidebar"]["sql_workspace"])
-    st.warning("SQL Workspace: Only available for Admin. (Demo placeholder)")
+    
+    # Double check security: Only Admin can access
+    if st.session_state["role"] == "admin":
+        st.info("Admin Area: Execute raw SQL queries directly on the database.")
+        
+        # SQL Input Area
+        sql_query = st.text_area("Enter SQL Query:", height=150, placeholder="SELECT * FROM rooms LIMIT 10;")
+        
+        if st.button("Execute Query", type="primary"):
+            if not sql_query.strip():
+                st.warning("Please enter a SQL query before executing.")
+            else:
+                # Classify query type (Read vs Write)
+                query_upper = sql_query.strip().upper()
+                try:
+                    if query_upper.startswith("SELECT") or query_upper.startswith("SHOW"):
+                        # Handle Read queries
+                        result = fetch_data(sql_query)
+                        if result:
+                            st.success("Query executed successfully!")
+                            st.dataframe(pd.DataFrame(result), width='stretch')
+                        else:
+                            st.info("Query executed successfully, but no data was returned.")
+                    else:
+                        # Handle Write queries (INSERT, UPDATE, DELETE, etc.)
+                        # Note: execute_write should ideally support raw queries without tuple params if passed None
+                        execute_write(sql_query, params=None)
+                        st.success("Database modified successfully!")
+                        
+                except Exception as e:
+                    st.error(f"SQL Execution Error: {e}")
+    else:
+        # Fallback security message if a non-admin bypasses the menu
+        st.error("Access Denied: You do not have permission to view this workspace.")
 
 elif page == "settings":
     st.header(lang["sidebar"]["settings"])

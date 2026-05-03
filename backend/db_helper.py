@@ -53,12 +53,12 @@ def fetch_data(query, params=None):
             cursor.execute(query, params)
             result = cursor.fetchall()
             return result
-    except Exception as e:
+    except pymysql.MySQLError as e:
         print(f"[SLAVE READ ERROR]: {e}")
-        return [] 
+        raise Exception(f"Database Read Error: {e}")
     except Exception as e:
         print(f"[SYSTEM ERROR] Unexpected error during read operation: {e}")
-        return []
+        raise Exception(f"SYSTEM Error: {e}")
     finally:
         # Ensure the connection exists before attempting to close it
         if conn:
@@ -76,16 +76,16 @@ def execute_write(query, params=None):
             cursor.execute(query, params)
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
-    except Exception as e:
+    except pymysql.MySQLError as e:
         if conn:
             conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
         print(f"[MASTER WRITE ERROR]: {e}")
-        return None 
+        raise Exception(f"Database Write Error: {e}")
     except Exception as e:
         if conn:
             conn.rollback()
         print(f"[SYSTEM ERROR] Unexpected error during write operation: {e}")
-        return None
+        raise Exception(f"SYSTEM Error: {e}")
         
     finally:
         if conn:
