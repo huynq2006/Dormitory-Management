@@ -1,268 +1,175 @@
+-- ========================================================
+-- SEED DATA FOR DORMITORY MANAGEMENT SYSTEM TESTING
+-- Organized by Test Cases 1 - 8
+-- ========================================================
+
+select * from rooms;
+select * from students;
+select distinct * from contracts;
+select * from meter_readings;
+select * from invoices;
+
 USE dormitory_management;
 
+-- Clear existing data to ensure a clean state (Disable FK checks for truncation)
 SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE audit_log;
-TRUNCATE TABLE invoices; 
-TRUNCATE TABLE meter_readings;
-DROP TRIGGER IF EXISTS update_occupancy;
-DROP TRIGGER IF EXISTS trg_decrease_occupancy;
--- Part 2: Test Trigger
--- 1. Clean old data for testing triggers
--- Phải xoá cái này để các Part 2, 3 không cộng dồn vào Part 4
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE contracts;
-TRUNCATE TABLE rooms;
-TRUNCATE TABLE students;
-DELETE FROM rooms WHERE room_id IN (111, 112, 113);
-SET FOREIGN_KEY_CHECKS = 1;
-
-insert into rooms (room_id, capacity, current_occupancy,base_price, status) VALUES
-(111, 2, 2, 1500000, 'full'), -- phong binh thuong 
-(112, 4, 0, 1000000, 'available'), -- phong trong
-(113, 2, 0, 2000000,'maintenance'); -- phong trong + bao tri
-
-INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
-VALUES 
-(111, '2026-04-01', 100, 200, 50, 60), 
-(112, '2026-04-01', 200, 250, 40, 70), 
-(113, '2026-04-01', 105, 220, 30, 80);
-
--- Manual test queries/state changes moved out of automatic seed execution.
--- Keep these commented out here or move them to a separate manual test script.
--- Test 1: Kiểm tra Event ghi vào audit_log
--- SELECT *
--- FROM audit_log;
-
--- Test 2: Giả lập Server sập và Chạy lại
--- Thay đổi giá phòng 101 xuống 1.100.000đ
--- UPDATE rooms SET base_price = 1100000 WHERE room_id = 101;
-
--- SELECT *
--- FROM invoices;
-
--- 2. Set up initial data for testing triggers
--- Rooms cho trigger test
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status) VALUES
-  (101, 4, 0, 1500000.00, 'available'),    -- Room A: test case 1, 2
-  (102, 4, 0, 1200000.00, 'available'),    -- Room B: test case 2, 4
-  (103, 2, 0, 1000000.00, 'available'),    -- Room C: test case 1
-  (104, 2, 0, 1000000.00, 'maintenance'),  -- Room D: test case 4 (maintenance)
-  (201, 2, 0, 1100000.00, 'available'),    -- Room X: test case 5
-  (202, 2, 0, 1100000.00, 'available'),    -- Room X2: test case 5 (SV2001 đang ở)
-  (203, 2, 0, 1100000.00, 'available'),    -- Room X3: test case 5 (SV2002 đang ở)
-  (301, 3, 0, 1300000.00, 'available');    -- Room T: test case 6
- 
--- Students cho trigger test
-INSERT INTO students (student_id, student_code, first_name, last_name, gender, email, status) VALUES
-  (1001, 'SV1001', 'Anh',   'Nguyen', 'M', 'anh@vnu.edu.vn',   1),
-  (1002, 'SV1002', 'Binh',  'Le',     'F', 'binh@vnu.edu.vn',  1),
-  (1005, 'SV1005', 'Cuong', 'Tran',   'M', 'cuong@vnu.edu.vn', 1),
-  (2001, 'SV2001', 'Dung',  'Pham',   'M', 'dung@vnu.edu.vn',  1),
-  (2002, 'SV2002', 'Em',    'Hoang',  'F', 'em@vnu.edu.vn',    1),
-  (3001, 'SV3001', 'An',    'Dang',   'M', 'an@vnu.edu.vn',    1),
-  (3002, 'SV3002', 'Bao',   'Hoang',  'M', 'bao@vnu.edu.vn',   1),
-  (3003, 'SV3003', 'Chi',   'Vu',     'F', 'chi@vnu.edu.vn',   1);
- 
--- TEST CASE 1:  Phòng mới đã full (Vi phạm BR-01, phải ROLLBACK)
-
-
--- TEST CASE 1 (TRIGGER PART): BR-01 phòng full
--- Mục tiêu: BEFORE INSERT trigger chặn insert
--- khi current_occupancy >= capacity
- 
--- Setup: Điền đầy room 101 (capacity=4) bằng cách cập nhật trực tiếp
-UPDATE rooms SET current_occupancy = 4, status = 'full' WHERE room_id = 101;
- 
--- Thử insert contract vào phòng full → phải bị chặn
-INSERT INTO contracts (student_id, room_id, start_date, status)
-VALUES (1001, 101, CURDATE(), 'active');
--- Expected: ERROR 'Room is full'
- 
-SELECT 'TC1: Room 101 sau khi thử insert vào phòng full' AS test_step,
-       room_id, current_occupancy, status FROM rooms WHERE room_id = 101;
--- Expected: current_occupancy=4, status='full' (không đổi)
- 
--- Reset room 101 cho các test tiếp theo
-UPDATE rooms SET current_occupancy = 0, status = 'available' WHERE room_id = 101;
- 
--- TEST CASE 4 (TRIGGER PART): Phòng maintenance
--- Mục tiêu: BEFORE INSERT trigger chặn insert
--- khi phòng đang bảo trì
- 
--- Thử insert contract vào phòng maintenance → phải bị chặn
-INSERT INTO contracts (student_id, room_id, start_date, status)
-VALUES (1001, 104, CURDATE(), 'active');
--- Expected: ERROR 'Room is under maintenance'
- 
-SELECT 'TC4: Room 104 sau khi thử insert vào phòng maintenance' AS test_step,
-       room_id, current_occupancy, status FROM rooms WHERE room_id = 104;
--- Expected: current_occupancy=0, status='maintenance' (không đổi)
--- Nếu Kết quả hiển thị thành 1, kiểm tra
-SHOW TRIGGERS FROM dormitory_management 
-WHERE `Table` = 'contracts';
-SELECT * FROM rooms WHERE room_id = 104;
-SELECT * FROM contracts WHERE student_id = 1001;
- 
--- TEST CASE BR-02 (TRIGGER PART): 1 student 1 active contract
--- Mục tiêu: BEFORE INSERT trigger chặn insert
--- khi student đã có active contract
- 
--- Setup: SV1001 đang có contract active tại room 103
-INSERT INTO contracts (student_id, room_id, start_date, status)
-VALUES (1001, 103, CURDATE(), 'active');
- 
-SELECT 'BR-02 Setup: SV1001 vào room 103' AS test_step,
-       room_id, current_occupancy, status FROM rooms WHERE room_id = 103;
--- Expected: current_occupancy=1
- 
--- Thử insert thêm 1 contract active cho SV1001 → phải bị chặn
-INSERT INTO contracts (student_id, room_id, start_date, status)
-VALUES (1001, 102, CURDATE(), 'active');
--- Expected: ERROR 'Student already has an active contract'
- 
-SELECT 'BR-02: Room 102 sau khi thử insert contract thứ 2' AS test_step,
-       room_id, current_occupancy, status FROM rooms WHERE room_id = 102;
--- Expected: current_occupancy=0 (không đổi)
-
-<<<<<<< HEAD
---------------------------------------------------------------------------------
--- Week 3: TEST PROCEDURE sp_generate_monthly_invoices + audit_log
--- 1. xóa dữ liệu cũ
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE contracts;
-TRUNCATE TABLE rooms;
-TRUNCATE TABLE students;
 TRUNCATE TABLE audit_log;
 TRUNCATE TABLE invoices;
 TRUNCATE TABLE meter_readings;
+TRUNCATE TABLE contracts;
+TRUNCATE TABLE rooms;
+TRUNCATE TABLE students;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 2. tạo dữ liệu giả
-INSERT INTO rooms (room_id, capacity, current_occupancy, base_price, status) VALUES
-  (101, 4, 0, 1500000.00, 'available'),  
-  (201, 2, 0, 1000000.00, 'available'),
-  (301, 3, 0, 1300000.00, 'available');    
-  
+-- ========================================================
+-- COMMON DATA SETUP (Base Students and Rooms)
+-- ========================================================
+
 INSERT INTO students (student_id, student_code, first_name, last_name, gender, email, status) VALUES
-  (1001, 'SV1001', 'Anh',   'Nguyen', 'M', 'anh@vnu.edu.vn',   1),
-  (2001, 'SV2001', 'Ang',   'Pham',   'F', 'ang@vnu.edu.vn',   1),
-  (3001, 'SV3001', 'An',    'Dang',   'M', 'an@vnu.edu.vn',    1),
-  (3002, 'SV3002', 'Bao',   'Hoang',  'M', 'bao@vnu.edu.vn',   1),
-  (3003, 'SV3003', 'Chi',   'Vu',     'F', 'chi@vnu.edu.vn',   1);
+(1001, 'SV1001', 'Anh', 'Nguyen', 'M', 'anh@vnu.edu.vn', 1),
+(1002, 'SV1002', 'Binh', 'Le', 'F', 'binh@vnu.edu.vn', 1),
+(1005, 'SV1005', 'Cuong', 'Tran', 'M', 'cuong@vnu.edu.vn', 1),
+(2001, 'SV2001', 'Dung', 'Pham', 'M', 'dung@vnu.edu.vn', 1),
+(2002, 'SV2002', 'Em', 'Hoang', 'F', 'em@vnu.edu.vn', 1),
+(3001, 'SV3001', 'An', 'Dang', 'M', 'an@vnu.edu.vn', 1),
+(3002, 'SV3002', 'Bao', 'Hoang', 'M', 'bao@vnu.edu.vn', 1),
+(3003, 'SV3003', 'Chi', 'Vu', 'F', 'chi@vnu.edu.vn', 1);
+
+select * from rooms;
+
+-- --------------------------------------------------------
+-- TEST CASE 1: New Room is Full (Violation of BR-01)
+-- --------------------------------------------------------
+-- Setup: Room 101 is already at maximum capacity
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (101, 'A', 4, 4, 1500000.00, 'full');
+
+-- Setup: Student 1001 has an active contract in Room 103
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (103, 'C', 2, 0, 1000000.00, 'available');
+
+INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) 
+VALUES (5001, 1001, 103, '2026-03-01', 'active');
+
+CALL sp_transfer_room(1001, 101, '2026-03-31');
+
+-- EXPECTED: CALL sp_transfer_room(1001, 101) should fail/rollback.
+
+-- --------------------------------------------------------
+-- TEST CASE 2: Room Available - Successful Transfer
+-- --------------------------------------------------------
+-- Setup: Room 102 has space
+
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (102, 'B', 4, 1, 1200000.00, 'available');
+
+CALL sp_transfer_room(1001, 102, '2026-03-31');
+
+-- Student 1001 (setup in TC1) will attempt transfer from 103 to 102.
+-- EXPECTED: sp_transfer_room succeeds. Contract 5001 ends '2026-03-31', new contract starts '2026-04-01'.
+
+-- --------------------------------------------------------
+-- TEST CASE 3: Student has no Active Contract
+-- --------------------------------------------------------
+-- Setup: Student 1002 exists but has no active contract.
+CALL sp_transfer_room(1002, 102, '2026-03-31');
+-- EXPECTED: CALL sp_transfer_room(1002, 102) should fail/rollback.
+
+-- --------------------------------------------------------
+-- TEST CASE 4: New Room under Maintenance
+-- --------------------------------------------------------
+-- Setup: Room 104 is under maintenance
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (104, 'B', 4, 0, 1000000.00, 'maintenance');
+
+CALL sp_transfer_room(1001, 104, '2026-03-31');
+
+-- EXPECTED: CALL sp_transfer_room(1001, 104) should fail due to 'maintenance' status.
+
+-- --------------------------------------------------------
+-- TEST CASE 5: Concurrent Transfer (Race Condition)
+-- --------------------------------------------------------
+-- Setup: Room 201 has only 1 spot left
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (201, 'X', 2, 1, 1100000.00, 'available');
+
+-- Students 2001 and 2002 have active contracts elsewhere
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (202, 'X', 2, 0, 1100000.00, 'available'),
+       (203, 'X', 2, 0, 1100000.00, 'available');
+
+INSERT INTO contracts (student_id, room_id, start_date, status) VALUES 
+(2001, 202, '2026-03-01', 'active'),
+(2002, 203, '2026-03-01', 'active');
+
+-- Session 1
+CALL sp_transfer_room(2001, 201, '2026-03-31');
+
+-- Session 2
+CALL sp_transfer_room(2002, 201, '2026-03-31');
+
+-- EXPECTED: Only one session succeeds; the second one triggers 'Room is full' error.
+
+-- --------------------------------------------------------
+-- TEST CASE 6: Trigger Occupancy & Status Synchronization
+-- --------------------------------------------------------
+-- Setup: Room 301 is empty
+INSERT INTO rooms (room_id, building, capacity, current_occupancy, base_price, status) 
+VALUES (301, 'T', 3, 0, 1300000.00, 'available');
+
+SELECT * FROM rooms WHERE room_id = 301;
+
+INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) VALUES 
+(5006, 3001, 301, '2026-03-01', 'active'),
+(5007, 3002, 301, '2026-03-01', 'active'),
+(5008, 3003, 301, '2026-03-01', 'active');
+-- Step 1: Insert 3 active contracts (Room should become 'full')
  
-INSERT INTO contracts (student_id, room_id, start_date, status) VALUES
-  (3001, 301, '2026-03-01', 'active'),
-  (3002, 301, '2026-03-01', 'active'),
-  (3003, 301, '2026-03-01', 'active');
--- Truyền số điện và số nước đã dùng trong tháng phòng 301
-INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
-VALUES (301, '2026-03-01', 0, 100, 0, 15);
+-- Step 2: Update 1 contract to 'ended' (Occupancy should decrease to 2, status 'available')\
+UPDATE contracts 
+SET status = 'ended', end_date = '2026-03-31'
+WHERE student_id = 3003 AND room_id = 301 AND status = 'active';
 
-select * from contracts;
+SELECT * FROM rooms WHERE room_id = 301;
+-- Step 3: Delete 1 active contract (Occupancy should decrease to 1)
+DELETE FROM contracts 
+WHERE student_id = 3002 AND room_id = 301 AND status = 'active';
+-- Step 4: Delete 1 already ended contract (Occupancy should remain 1)
+DELETE FROM contracts 
+WHERE student_id = 3003 AND room_id = 301 AND status = 'ended';
 
--- 3. Gọi sp_generate_monthly_invoices để chốt hóa đơn và kiểm tra kết quả tính toán
--- CASE 1: sai định dạng ngày truyền 
-call sp_generate_monthly_invoices (301, '2026-03-15');
-    
--- CASE 2: đảm bảo Idempotent không tạo trùng 
-	-- lần 1: mong muốn tạo 1 dòng hóa đơn với tổng tiền 1tr850
-	call sp_generate_monthly_invoices (301, '2026-03-01');
-	-- kiểm tra 
-	select room_id, month, total_amount, 'chạy lần 1' as status 
-	from invoices where room_id = 301 and month = '2026-03-01';
-			
-	-- lần 2: mong muốn không tạo thêm, không báo lỗi
-	call sp_generate_monthly_invoices (301, '2026-03-01');
-	-- kiểm tra 
-	select room_id, month, total_amount, 'chạy lần 2' as status 
-	from invoices where room_id = 301 and month = '2026-03-01';
-			
-	-- lần 3: cập nhật số điện: 80 số, số nước: 7 khối cho phòng 'unpaid'
-	update meter_readings 
-	set electric_new = 80,
-	water_new = 7
-	where room_id = 301 and month = '2026-03-01';
-	call sp_generate_monthly_invoices (301, '2026-03-01');
-	select * from invoices;
-	
-  -- kiểm tra audig_log cho CASE 2
-  select * from audit_log;
-    
--- CASE 3: chốt hóa đơn cho phòng đang có sinh viên
--- bao gồm phòng đã chốt điện nước và phòng chưa chốt điện nước
-	-- B1: tạo contract cho 1 sv phòng 101, 1 sv phòng 201
-	INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) VALUES 
-		(4, 1001, 101, '2026-03-01', 'active'),
-		(5, 2001, 201, '2026-03-01', 'active');
+SELECT room_id, capacity, current_occupancy, status
+FROM rooms
+WHERE room_id = 301;
+-- --------------------------------------------------------
+-- TEST CASE 7: Same Room Transfer
+-- --------------------------------------------------------
+-- Setup: Student 1005 is already in Room 101
+INSERT INTO contracts (contract_id, student_id, room_id, start_date, status) 
+VALUES (7001, 1005, 101, '2026-03-01', 'active');
 
-	-- B2: truyền số điện và số nước đã dùng trong tháng cho phòng 101 và không truyền cho phòng 201
-	INSERT INTO meter_readings (reading_id, room_id, month, electric_old, electric_new, water_old, water_new)
-	VALUES (2, 101, '2026-03-01', 0, 30, 0, 3);
-	
-	-- B3: gọi procedure tính tiền và kiểm tra
-  -- mong muốn có 2 hóa đơn cho 2 phòng 101 và 201
-	call sp_generate_monthly_invoices (101, '2026-03-01');
-  call sp_generate_monthly_invoices (201, '2026-03-01');
-	select * from invoices;
-  select * from audit_log;
-  
--- CASE 4: lưu hóa đơn còn nợ, khi hợp đồng đã kết thúc
-	-- B1: Kết thúc TẤT CẢ hợp đồng của phòng 301 để đảm bảo phòng không còn ai
-	UPDATE contracts
-	SET status = 'ended',
-		end_date = '2026-03-31'
-	WHERE room_id = 301 AND status = 'active';
+UPDATE rooms 
+SET capacity = 5, status = "available"
+WHERE room_id = 101;
 
-	-- B2: Kiểm tra xem Trigger đã trả phòng về 0 người chưa
-	-- Kỳ vọng: current_occupancy = 0 và status = 'available'
-	SELECT room_id, current_occupancy, status 
-	FROM rooms 
-	WHERE room_id = 301;
+CALL sp_transfer_room(1005, 101, '2026-03-31');
+-- EXPECTED: CALL sp_transfer_room(1005, 101, '2026-03-31') should be blocked by logic to prevent data noise.
 
-	-- Bước 3: Kiểm tra hóa đơn
-	-- Kỳ vọng: Bảng vẫn giữ nguyên hóa đơn của phòng 301 (số tiền nợ vẫn còn đó)
-	SELECT invoice_id, room_id, month, total_amount, paid_status 
-	FROM invoices 
-	WHERE room_id = 301;
+-- --------------------------------------------------------
+-- TEST CASE 8: Block Mid-Month Transfer (BR-06)
+-- --------------------------------------------------------
+CALL sp_transfer_room(1001, 102, '2026-03-15');
+-- EXPECTED: If p_effective_date is not the last day of the month (e.g., '2026-03-15'), 
+-- the procedure should throw an error to enforce monthly alignment.
 
--- CASE 5: chốt hóa đơn cho tháng mới, không bị ảnh hưởng bởi hóa đơn tháng cũ
-	-- B1: Cập nhật lại sĩ số phòng 301 là 3
-  UPDATE rooms
-  SET current_occupancy = 3
-  WHERE room_id = 301;
+-- ========================================================
+-- AUDIT LOG INITIALIZATION
+-- ========================================================
+INSERT INTO audit_log (actor, action, detail) 
+VALUES ('system_seed', 'SEED_DATA_LOAD', 'Initial test data for cases 1-8 loaded successfully');
 
-  -- B2: Tạo hóa đơn cho tháng mới (tháng 4)
-  INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new) 
-  VALUES (301, '2026-04-01', 80, 150, 7, 15);
-  
-  -- B3: Tính hóa đơn và kiểm tra
-  CALL sp_generate_monthly_invoices (301, '2026-04-01');
-  select * from invoices;
-  
--- CASE 6: Không cho phép tính Chỉ số mới < Chỉ số cũ (phòng 101)
--- mong đợi trả về 0
-  INSERT INTO meter_readings (room_id, month, electric_old, electric_new, water_old, water_new)
-  VALUES (101, '2026-04-01', 30, 20, 3, 2);
-  
-  CALL sp_generate_monthly_invoices (101, '2026-04-01');
-  select * from invoices;
-
--- CASE 7: Bảo vệ dữ liệu đã thanh toán
--- mong đợi không cho phép ghi đè lên hóa đơn đã thanh toán, nếu có cập nhật sau khi đã thanh toán
-  -- B1: Cập nhật trạng thái thanh toán là 'paid'
-  UPDATE invoices
-  SET paid_status = 'paid'
-  WHERE room_id = 101 AND month = '2026-03-01'
-
-  -- B2: Cập nhật số điện từ 30 lên 100 số
-  UPDATE meter_readings 
-  SET electric_new = 100 
-  WHERE room_id = 101 AND month = '2026-03-01';
-  
-  -- B3: Gọi procedure tính tiền lại và kiểm tra không bị ghi đè
-  CALL sp_generate_monthly_invoices (101, '2026-03-01');
-  select * from invoices 
-  where room_id = 101 and month = '2026-03-01';
-=======
---------------------------------------------------------------------------------
->>>>>>> f54e62fe9e3950d43cd450399b3d14d606d842d3
+-- Final Verification of Setup
+SELECT * FROM rooms;
+SELECT * FROM students;
+SELECT * FROM contracts;
+SELECT * FROM audit_log;
