@@ -2,6 +2,8 @@ import os
 import pymysql
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from datetime import datetime
+import calendar
 
 # Load environment variables from .env (once)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -31,7 +33,6 @@ def _get_connection(url_env):
         # Catch network/authentication errors early for clear logging
         print(f"[CONNECTION ERROR] Cannot connect to DB via {url_env}: {e}")
         raise e
-from dotenv import load_dotenv
 
 def get_slave_connection():
     """Returns a connection to the Read-Only Replica (Slave)."""
@@ -52,12 +53,12 @@ def fetch_data(query, params=None):
             cursor.execute(query, params)
             result = cursor.fetchall()
             return result
-    except Exception as e:
+    except pymysql.MySQLError as e:
         print(f"[SLAVE READ ERROR]: {e}")
-        return [] 
+        raise Exception(f"Database Read Error: {e}")
     except Exception as e:
         print(f"[SYSTEM ERROR] Unexpected error during read operation: {e}")
-        return []
+        raise Exception(f"SYSTEM Error: {e}")
     finally:
         # Ensure the connection exists before attempting to close it
         if conn:
@@ -75,16 +76,16 @@ def execute_write(query, params=None):
             cursor.execute(query, params)
         conn.commit() # Commit transaction if successful
         return cursor.lastrowid # Return the ID of the newly inserted row (if applicable)
-    except Exception as e:
+    except pymysql.MySQLError as e:
         if conn:
             conn.rollback() # Rollback immediately if an error occurs to maintain data integrity
         print(f"[MASTER WRITE ERROR]: {e}")
-        return None 
+        raise Exception(f"Database Write Error: {e}")
     except Exception as e:
         if conn:
             conn.rollback()
         print(f"[SYSTEM ERROR] Unexpected error during write operation: {e}")
-        return None
+        raise Exception(f"SYSTEM Error: {e}")
         
     finally:
         if conn:
@@ -95,3 +96,34 @@ def fetch_rooms():
     Query room list (for dashboard/frontend).
     """
     return fetch_data("SELECT * FROM rooms")
+
+def fetch_overdue():
+    query = """
+        SELECT * FROM invoices 
+        WHERE paid_status = 'overdue' 
+           OR (paid_status = 'unpaid' AND due_date < CURDATE())
+    """
+    return fetch_data(query)
+
+def generate_monthly_invoices():
+    today = datetime.today()
+    first_day_of_month = f"{today.year}-{today.month:02d}-01"
+
+    query = "CALL sp_generate_monthly_invoices(%s, %s)"
+    return execute_write(query, (None, first_day_of_month))
+
+def fetch_current_month_invoices():
+    """Print this month's invoice to the screen."""
+    today = datetime.today()
+    first_day_of_month = f"{today.year}-{today.month:02d}-01"
+    
+    query = "SELECT * FROM invoices WHERE month = %s"
+    return fetch_data(query, (first_day_of_month,))
+
+def transfer_student(student_id, new_room_id):
+    today = datetime.today()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    effective_date = f"{today.year}-{today.month:02d}-{last_day:02d}"
+    
+    query = "CALL sp_transfer_room(%s, %s, %s)"
+    return execute_write(query, (student_id, new_room_id, effective_date))
