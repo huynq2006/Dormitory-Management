@@ -1,6 +1,7 @@
 import os
 import pymysql
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 # Load environment variables from .env (once)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
