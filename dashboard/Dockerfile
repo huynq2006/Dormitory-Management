@@ -10,11 +10,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy only requirements (not code)
 COPY ./backend/requirements.txt /app/backend-requirements.txt
-COPY ./dashboard/requirements.txt /app/dashboard-requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/backend-requirements.txt && \
-    pip install --no-cache-dir -r /app/dashboard-requirements.txt
+RUN pip install --no-cache-dir -r /app/backend-requirements.txt
 
 # Code will be mounted via volumes in docker-compose
 # COPY is not needed - volumes override
