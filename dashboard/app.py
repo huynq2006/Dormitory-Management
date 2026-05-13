@@ -29,15 +29,6 @@ lang = load_lang(st.session_state["lang"])
 # SIDEBAR NAVIGATION
 st.sidebar.title("Dormitory Management")
 
-# Role Selection Dropdown
-role = st.sidebar.selectbox(
-    lang["settings"]["role"],
-    options=["admin", "manager", "student"],
-    format_func=lambda x: lang["roles"][x],
-    index=["admin", "manager", "student"].index(st.session_state["role"])
-)
-st.session_state["role"] = role
-
 # Language Selection Dropdown
 lang_code = st.sidebar.selectbox(
     lang["settings"]["language"],
@@ -48,6 +39,15 @@ lang_code = st.sidebar.selectbox(
 st.session_state["lang"] = lang_code
 lang = load_lang(lang_code)
 
+# Role Selection Dropdown
+role = st.sidebar.selectbox(
+    lang["settings"]["role"],
+    options=["admin", "manager", "student"],
+    format_func=lambda x: lang["roles"][x],
+    index=["admin", "manager", "student"].index(st.session_state["role"])
+)
+st.session_state["role"] = role
+
 # Dynamic Menu based on selected Role
 pages = ROLES[role]
 page_labels = [lang["sidebar"][p] for p in pages]
@@ -56,11 +56,7 @@ page = st.sidebar.radio("Menu", pages, format_func=lambda x: lang["sidebar"][x])
 # MAIN CONTENT AREA
 st.title("Dormitory Management System")
 
-if page == "overview":
-    st.header(lang["sidebar"]["overview"])
-    st.info("Dashboard content will be displayed here.")
-
-elif page == "rooms":
+if page == "rooms":
     # Fallback to fetch title from json, otherwise use sidebar name
     title = lang["rooms"]["title"] if "rooms" in lang and "title" in lang["rooms"] else lang["sidebar"]["rooms"]
     st.header(title)
@@ -165,14 +161,11 @@ elif page == "sql_workspace":
         # Fallback security message if a non-admin bypasses the menu
         st.error("Access Denied: You do not have permission to view this workspace.")
 
-elif page == "settings":
-    st.header(lang["sidebar"]["settings"])
-    st.write("Change language and role in the sidebar navigation.")
+
 
 st.markdown("""
     <style>
-    .css-1d391kg {background-color: #f5f6fa;}
-    .css-18e3th9 {background-color: #fff;}
-    .stSidebar {background-color: #23272f;}
+    .css-1d391kg {color: black;}
+    .css-18e3th9 {color: black;}
     </style>
 """, unsafe_allow_html=True)

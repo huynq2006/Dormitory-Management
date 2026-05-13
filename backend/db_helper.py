@@ -9,7 +9,7 @@ import calendar
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 def _get_connection(url_env):
-    # Retrieve the complete database connection URL from environment variables
+    """Open and return a PyMySQL connection described by an environment variable."""
     db_url = os.getenv(url_env)
     
     if not db_url:
@@ -98,6 +98,9 @@ def fetch_rooms():
     return fetch_data("SELECT * FROM rooms")
 
 def fetch_overdue():
+    """
+    Fetch all overdue invoices.
+    """
     query = """
         SELECT * FROM invoices 
         WHERE paid_status = 'overdue' 
@@ -106,6 +109,7 @@ def fetch_overdue():
     return fetch_data(query)
 
 def generate_monthly_invoices():
+    """Call the stored procedure to generate invoices for the current month."""
     today = datetime.today()
     first_day_of_month = f"{today.year}-{today.month:02d}-01"
 
@@ -113,7 +117,7 @@ def generate_monthly_invoices():
     return execute_write(query, (None, first_day_of_month))
 
 def fetch_current_month_invoices():
-    """Print this month's invoice to the screen."""
+    """Fetch this month's invoices."""
     today = datetime.today()
     first_day_of_month = f"{today.year}-{today.month:02d}-01"
     
@@ -121,6 +125,7 @@ def fetch_current_month_invoices():
     return fetch_data(query, (first_day_of_month,))
 
 def transfer_student(student_id, new_room_id):
+    """Call the stored procedure to transfer a student to a new room, effective at the end of the current month."""
     today = datetime.today()
     last_day = calendar.monthrange(today.year, today.month)[1]
     effective_date = f"{today.year}-{today.month:02d}-{last_day:02d}"
