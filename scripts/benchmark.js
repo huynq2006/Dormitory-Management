@@ -119,7 +119,7 @@ export const options = {
         'WRITE_errors':['rate<0.10'],            // Tỉ lệ lỗi ghi hệ thống dưới 10%
         'READ_latency':['p(95)<300'],            // 95% request đọc phải truy vấn xong dưới 300ms
         'WRITE_latency':['p(95)<800'],           // 95% request ghi phải xong dưới 800ms
-        'READ_latency_no_index':['p(95)<500'],   // 95% request đọc (chia không index) < 500ms 
+        'READ_latency_no_index':['p(95)<500'],   // 95% request đọc (khi không có index) < 500ms
         'READ_latency_with_index':['p(95)<150'], // 95% request đọc (có index) < 150ms để thấy sự cải thiện
     }
 };
