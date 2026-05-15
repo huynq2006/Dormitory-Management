@@ -132,3 +132,25 @@ def transfer_student(student_id, new_room_id):
     
     query = "CALL sp_transfer_room(%s, %s, %s)"
     return execute_write(query, (student_id, new_room_id, effective_date))
+
+def fetch_student_info(student_code):
+    """
+    Fetch student personal information and their contract details by student code.
+    """
+    query = """
+        SELECT 
+            c.contract_id, 
+            c.room_id, 
+            c.start_date, 
+            c.end_date, 
+            c.status AS contract_status, 
+            CONCAT(s.first_name, ' ', s.last_name) AS full_name, 
+            s.gender, 
+            s.email, 
+            s.phone
+        FROM students s
+        LEFT JOIN contracts c ON s.student_id = c.student_id
+        WHERE s.student_code = %s
+        ORDER BY c.start_date DESC
+    """
+    return fetch_data(query, (student_code,))
