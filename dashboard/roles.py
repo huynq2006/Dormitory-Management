@@ -3,5 +3,5 @@ ROLES = {
     
     "manager": ["rooms", "transfer", "invoices", "overdue", "student_info"],
     
-    "student": ["rooms", "invoices", "overdue", "student_info"]
+    "student": ["rooms", "overdue", "student_info"]
 }
