@@ -88,7 +88,54 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 * **Backend & Dữ liệu:** Python (PyMySQL, thư viện Faker dùng để bơm hơn 5000+ bản ghi chuẩn nghiệp vụ)
 * **Giao diện (UI):** Streamlit (Tương tác trực quan và Demo)
 
-
+### Cấu trúc dự án
+```text
+.
+├── backend/                # Mã nguồn backend (Python, xử lý DB, API)
+│   ├── db_helper.py
+│   └── main.py
+├── dashboard/              # Giao diện người dùng (Streamlit UI)
+│   ├── app.py
+│   ├── Dockerfile
+│   ├── roles.py
+│   └── lang/               # Đa ngôn ngữ cho dashboard
+│       ├── en.json
+│       └── vi.json
+├── database/               # Định nghĩa CSDL, migration, seed data
+│   ├── 01-schema.sql
+│   ├── 02-views.sql
+│   ├── 03-procedures.sql
+│   ├── 05-replication.sql
+│   ├── 06-events.sql
+│   ├── 07-triggers.sql
+│   ├── 99-seed-data.sql
+│   └── migrations/
+│       ├── 2026-03-25-01-sample-file.sql
+│       └── ...
+├── dockerfiles/            # Dockerfile cho các thành phần hệ thống
+│   ├── Dockerfile.master
+│   └── Dockerfile.slave
+├── mysql-config/           # Cấu hình MySQL cho master/slave
+│   ├── master.cnf
+│   └── slave.cnf
+├── scripts/                # Script hỗ trợ (tạo dữ liệu, benchmark, ...)
+│   ├── benchmark.js
+|   ├── Dockerfile.k6
+│   ├── generate_data.py
+│   └── run_gen.bat
+├── results/                # Kết quả benchmark, báo cáo hiệu năng
+├── imgs/                   # Hình ảnh minh họa (ERD, diagram, ...)
+├── docs/                   # Tài liệu hướng dẫn, đặc tả
+│   ├── benchmark-scenario.md
+│   ├── commit-guide.md
+│   ├── data-dictionary.md
+│   ├── test-cases.md
+│   └── workflow-guide.md
+├── env.example             # File môi trường mẫu
+├── docker-compose.yml      # Docker Compose orchestration file
+├── requirements.txt        # Thư viện Python cần cài đặt
+└── README.md               # Tài liệu giới thiệu dự án
+```
 
 ### Thiết kế Cơ sở Dữ liệu
 ![ERD](imgs/dbms-project-erd.png)
