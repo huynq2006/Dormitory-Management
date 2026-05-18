@@ -4,6 +4,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.9+-yellow.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B.svg)](https://streamlit.io/)
+[![k6](https://img.shields.io/badge/k6-Load_Testing-7D64FF.svg)](https://k6.io/)
 
 ## 🇬🇧 1. Project Overview (English)
 This project focuses on building and optimizing a relational database for a Dormitory/Apartment Management System. Moving beyond basic CRUD operations, this system demonstrates advanced database techniques to handle real-world concurrency, automated batch processing, and high-traffic read operations.
@@ -18,6 +19,55 @@ This project focuses on building and optimizing a relational database for a Dorm
 * **Infrastructure:** Docker & Docker Compose (Master/Slave nodes)
 * **Backend & Data:** Python (PyMySQL, Faker for generating 5k+ realistic records)
 * **Frontend:** Streamlit (Interactive UI for Demo & Data Viz)
+
+### Project Structure
+```text
+.
+├── backend/                # Backend source code (Python, DB handling, API)
+│   ├── db_helper.py
+│   └── main.py
+├── dashboard/              # User interface (Streamlit UI)
+│   ├── app.py
+│   ├── Dockerfile
+│   ├── roles.py
+│   └── lang/               # Multilingual support for dashboard
+│       ├── en.json
+│       └── vi.json
+├── database/               # Database definitions, migrations, seed data
+│   ├── 01-schema.sql
+│   ├── 02-views.sql
+│   ├── 03-procedures.sql
+│   ├── 05-replication.sql
+│   ├── 06-events.sql
+│   ├── 07-triggers.sql
+│   ├── 99-seed-data.sql
+│   └── migrations/
+│       ├── 2026-03-25-01-sample-file.sql
+│       └── ...
+├── dockerfiles/            # Dockerfiles for system components
+│   ├── Dockerfile.master
+│   └── Dockerfile.slave
+├── mysql-config/           # MySQL configuration for master/slave
+│   ├── master.cnf
+│   └── slave.cnf
+├── scripts/                # Supporting scripts (data generation, benchmarking, ...)
+│   ├── benchmark.js
+|   ├── Dockerfile.k6
+│   ├── generate_data.py
+│   └── run_gen.bat
+├── results/                # Benchmark results, performance reports
+├── imgs/                   # Illustrative images (ERD, diagrams, ...)
+├── docs/                   # Documentation and specifications
+│   ├── benchmark-scenario.md
+│   ├── commit-guide.md
+│   ├── data-dictionary.md
+│   ├── test-cases.md
+│   └── workflow-guide.md
+├── env.example             # Example environment file
+├── docker-compose.yml      # Docker Compose orchestration file
+├── requirements.txt        # Required Python libraries
+└── README.md               # Project introduction documentation
+```
 
 ### Database Design
 ![ERD](imgs/dbms-project-erd.png)
@@ -37,6 +87,8 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 * **Hạ tầng:** Docker & Docker Compose (Triển khai cụm Master/Slave)
 * **Backend & Dữ liệu:** Python (PyMySQL, thư viện Faker dùng để bơm hơn 5000+ bản ghi chuẩn nghiệp vụ)
 * **Giao diện (UI):** Streamlit (Tương tác trực quan và Demo)
+
+
 
 ### Thiết kế Cơ sở Dữ liệu
 ![ERD](imgs/dbms-project-erd.png)
