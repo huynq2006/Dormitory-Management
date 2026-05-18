@@ -88,9 +88,9 @@ BEGIN
     WHERE room_id = p_new_room_id 
     FOR UPDATE;
 
-    IF CURDATE() <> LAST_DAY(CURDATE()) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed exactly on the last day of the month';
-    END IF;
+    -- IF CURDATE() <> LAST_DAY(CURDATE()) THEN
+    --     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed exactly on the last day of the month';
+    -- END IF;
     
     IF p_effective_date <> LAST_DAY(CURDATE()) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transfer only allowed at current month end, effective date must be the last day of current month';
