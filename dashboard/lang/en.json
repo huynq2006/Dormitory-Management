@@ -1,20 +1,42 @@
 {
-  "sidebar": {
-    "overview": "Overview",
-    "rooms": "Room Management",
-    "sql_workspace": "SQL Workspace",
-    "settings": "Settings"
-  },
-  "settings": {
-    "language": "Language",
-    "role": "Role"
-  },
-  "roles": {
-    "admin": "Admin",
-    "manager": "Manager",
-    "student": "Student"
-  },
-  "rooms": {
-    "title": "Room List"
-  }
+    "settings": {
+        "language": "Select Language",
+        "role": "Select Role"
+    },
+    "roles": {
+        "admin": "Administrator",
+        "manager": "Manager",
+        "student": "Student"
+    },
+    "sidebar": {
+        "overview": "Overview",
+        "rooms": "Room Management",
+        "transfer": "Room Transfer",
+        "invoices": "Generate Invoices",
+        "overdue": "Overdue Debts",
+        "sql_workspace": "SQL Workspace",
+        "student_info": "Student Information",
+        "settings": "Settings"
+    },
+    "rooms": {
+        "title": "Dormitory Room List"
+    },
+    "student_info": {
+        "title": "Student Information Lookup",
+        "input_label": "Enter Student Code",
+        "button": "Search",
+        "not_found": "No information found for this student code.",
+        "contract_id": "Contract ID",
+        "room_id": "Room ID",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "contract_status": "Contract Status",
+        "full_name": "Full Name",
+        "gender": "Gender",
+        "email": "Email",
+        "phone": "Phone Number",
+        "gender_m": "Male",
+        "gender_f": "Female",
+        "gender_o": "Other"
+    }
 }

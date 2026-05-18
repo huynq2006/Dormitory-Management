@@ -10,16 +10,6 @@ def transfer_student(student_id, new_room_id, effective_date):
     
     try:
         with connection.cursor() as cursor:
-            sql_check = "SELECT room_id FROM contracts WHERE student_id = %s AND status = 'active'"
-            cursor.execute(sql_check, (student_id,))
-            result = cursor.fetchone()
-            
-            if result:
-                current_room = result['room_id'] 
-                
-                if new_room_id == current_room:
-                    return False, f"Student {student_id} is already in room {new_room_id}"
-            
             cursor.callproc('sp_transfer_room', [student_id, new_room_id, effective_date])
             
             connection.commit()
@@ -44,7 +34,8 @@ def transfer_student(student_id, new_room_id, effective_date):
 # Example: Room 101 has the capacity of 2
 # Result 
 if __name__ == "__main__":
-    transfer_student(3, 1, "2025-03-30")
+    success, msg = transfer_student(3, 1, "2026-04-30")
+    print(f"Result: {msg}")
     
 from db_helper import fetch_data, execute_write
 
