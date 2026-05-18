@@ -43,7 +43,7 @@ services:
     container_name: streamlit-app
     restart: unless-stopped
     ports:
-      - "8501:8501"
+      - "18501:8501"
     depends_on:
       - mysql-master
       - mysql-slave
@@ -57,6 +57,7 @@ services:
     volumes:
       - ./dashboard:/app/dashboard
       - ./backend:/app/backend
+      - ./scripts:/app/scripts
 volumes:
   master-data:
   slave-data:

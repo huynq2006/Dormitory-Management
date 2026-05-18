@@ -1,7 +1,7 @@
 ROLES = {
-    "admin": ["rooms", "transfer", "invoices", "overdue", "sql_workspace"],
+    "admin": ["rooms", "transfer", "invoices", "overdue", "student_info", "sql_workspace"],
     
-    "manager": ["rooms", "transfer", "invoices", "overdue"],
+    "manager": ["rooms", "transfer", "invoices", "overdue", "student_info"],
     
-    "student": ["rooms"]
+    "student": ["rooms", "overdue", "student_info"]
 }

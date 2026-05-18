@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements (not code)
-COPY ./backend/requirements.txt /app/backend-requirements.txt
+# Copy the unified requirements file
+COPY ./requirements.txt /app/requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/backend-requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Code will be mounted via volumes in docker-compose
 # COPY is not needed - volumes override
