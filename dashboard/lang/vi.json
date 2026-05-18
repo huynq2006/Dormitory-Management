@@ -15,9 +15,28 @@
         "invoices": "Tạo hóa đơn",
         "overdue": "Nợ quá hạn",
         "sql_workspace": "SQL Workspace",
+        "student_info": "Thông tin sinh viên",
         "settings": "Cài đặt"
     },
     "rooms": {
         "title": "Danh sách phòng ký túc xá"
+    },
+    "student_info": {
+        "title": "Tra cứu thông tin sinh viên",
+        "input_label": "Nhập mã sinh viên",
+        "button": "Tra cứu",
+        "not_found": "Không tìm thấy thông tin cho mã sinh viên này.",
+        "contract_id": "Mã hợp đồng",
+        "room_id": "Mã phòng",
+        "start_date": "Ngày bắt đầu",
+        "end_date": "Ngày kết thúc",
+        "contract_status": "Trạng thái hợp đồng",
+        "full_name": "Họ và tên",
+        "gender": "Giới tính",
+        "email": "Email",
+        "phone": "Số điện thoại",
+        "gender_m": "Nam",
+        "gender_f": "Nữ",
+        "gender_o": "Khác"
     }
 }

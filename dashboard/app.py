@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 
 # Import database interaction functions and role configuration 
-from db_helper import fetch_rooms, fetch_overdue, generate_monthly_invoices, transfer_student, fetch_current_month_invoices, fetch_data, execute_write
+from db_helper import fetch_rooms, fetch_overdue, generate_monthly_invoices, transfer_student, fetch_current_month_invoices, fetch_data, execute_write, fetch_student_info
 from roles import ROLES
 
 # Function to load language JSON files
@@ -160,6 +160,47 @@ elif page == "sql_workspace":
     else:
         # Fallback security message if a non-admin bypasses the menu
         st.error("Access Denied: You do not have permission to view this workspace.")
+
+elif page == "student_info":
+    st.header(lang["student_info"]["title"])
+    
+    # Search form for student info
+    with st.form("student_search_form"):
+        student_code = st.text_input(lang["student_info"]["input_label"])
+        search_submitted = st.form_submit_button(lang["student_info"]["button"])
+        
+        if search_submitted:
+            if student_code:
+                try:
+                    data = fetch_student_info(student_code)
+                    if data:
+                        st.success(f"Found {len(data)} record(s) for {student_code}")
+                        for idx, record in enumerate(data):
+                            if len(data) > 1:
+                                st.subheader(f"{lang['student_info']['contract_id']}: {record['contract_id']}")
+                            
+                            # Map gender code to label
+                            gender_label = lang["student_info"].get(f"gender_{record['gender'].lower()}", record['gender'])
+                            
+                            # Display information vertically
+                            st.markdown(f"**{lang['student_info']['full_name']}:** {record['full_name']}")
+                            st.markdown(f"**{lang['student_info']['gender']}:** {gender_label}")
+                            st.markdown(f"**{lang['student_info']['email']}:** {record['email']}")
+                            st.markdown(f"**{lang['student_info']['phone']}:** {record['phone']}")
+                            st.markdown(f"**{lang['student_info']['contract_id']}:** {record['contract_id']}")
+                            st.markdown(f"**{lang['student_info']['room_id']}:** {record['room_id']}")
+                            st.markdown(f"**{lang['student_info']['start_date']}:** {record['start_date']}")
+                            st.markdown(f"**{lang['student_info']['end_date']}:** {record['end_date'] if record['end_date'] else 'N/A'}")
+                            st.markdown(f"**{lang['student_info']['contract_status']}:** {record['contract_status']}")
+                            
+                            if idx < len(data) - 1:
+                                st.divider()
+                    else:
+                        st.warning(lang["student_info"]["not_found"])
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.warning("Please enter a student code.")
 
 
 
