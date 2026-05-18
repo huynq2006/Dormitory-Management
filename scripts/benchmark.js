@@ -5,6 +5,7 @@ import exec  from 'k6/execution';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 import mysql from 'k6/x/sql/driver/mysql';
 
+// Khai báo các custom metrics để k6 ghi nhận kết quả
 const readLatencies    = new Trend('READ_latency', true);
 const writeLatencies   = new Trend('WRITE_latency', true);
 const noIndexLatency   = new Trend('READ_latency_no_index', true);
@@ -16,10 +17,12 @@ const readErrors       = new Rate('READ_errors');
 const writeErrors      = new Rate('WRITE_errors');
 const writeBusinessRejects = new Counter('WRITE_business_rejects');
 
-
+// Cấu hình các kịch bản chạy test tải (scenarios)
 export const options = {
     scenarios: {
-        // Run 1: Baseline (0s → 120s)
+// Kịch bản Baseline: Chỉ thực hiện tải đọc (read workload)
+        // Mục đích: Đo hiệu năng hệ thống ở mức tải thấp (20 req/s) trong 120s
+        // Giúp thiết lập mốc hiệu năng cơ bản để so sánh với các bài test tải cao hơn.
         baseline_read: {
             executor: 'constant-arrival-rate',
             rate: 20, timeUnit: '1s', duration: '120s',
@@ -27,7 +30,10 @@ export const options = {
             startTime: '0s', exec: 'read_workload',
             tags: { scenario: 'Baseline', target_node: 'slave' }
         },
-        // Run 2: Mixed (150s → 330s) — cooldown 30s
+        // Kịch bản Mixed (Hỗn hợp): Mô phỏng tải đọc và ghi hoạt động song song
+        // Mục đích: Xem xét tác động của thao tác ghi (trên Master) đối với hiệu năng đọc (trên Slave)
+        // và kiểm tra xem hệ thống có duy trì được độ trễ ổn định không. Tải read: 40 req/s, write: 20 req/s.
+        // Có khoảng thời gian nghỉ (cooldown) 30s sau baseline.
         mixed_read: {
             executor: 'constant-arrival-rate',
             rate: 40, timeUnit: '1s', duration: '180s',
@@ -42,8 +48,9 @@ export const options = {
             startTime: '150s', exec: 'write_workload',
             tags: { scenario: 'Mixed', target_node: 'master' }
         },
-        // Replication lag — chạy song song với Mixed
-       
+        // Kịch bản Replication Lag: Đo độ trễ đồng bộ từ Master xuống Slave
+        // Chạy song song với Mixed workload. Số lượng request thấp (2 req/s) 
+        // để thu thập dữ liệu độ trễ mà không tạo thêm gánh nặng đáng kể lên database.
         replication_lag_check: {
             executor: 'constant-arrival-rate',
             rate: 2,  // Giảm từ 5 xuống 2 req/s — đủ để quan sát, không gây nhiễu
@@ -52,7 +59,9 @@ export const options = {
             startTime: '150s', exec: 'check_replication_lag',
             tags: { scenario: 'Mixed', query_type: 'REPLICATION_LAG' }
         },
-        // Run 3: Stress (360s → 540s) — cooldown 30s
+        // Kịch bản Stress (Ép tải): Tăng tải lên mức rất cao
+        // Đọc: 100 req/s, Ghi: 50 req/s. Mục đích là tìm ra điểm giới hạn (bottleneck) 
+        // của Master/Slave và xem xét lỗi, timeout hay replication lag tăng vọt có trễ hay không.
         stress_read: {
             executor: 'constant-arrival-rate',
             rate: 100, timeUnit: '1s', duration: '180s',
@@ -67,7 +76,12 @@ export const options = {
             startTime: '360s', exec: 'write_workload',
             tags: { scenario: 'Stress', target_node: 'master' }
         },
-        // Index benchmark (570s → 700s) — cooldown 30s sau stress
+        // Kịch bản Index Benchmark: Đo ảnh hưởng của Index tới hiệu năng truy vấn Đọc (View / Table).
+        // Chạy lúc 570s sau đoạn Stress test. Bao gồm 4 bước nhỏ chạy theo chuỗi:
+        // 1. drop_index: xoá index đi (15s trước khi test).
+        // 2. index_without: Bắn 20 req/s để đo độ trễ tra cứu full table scan.
+        // 3. create_index: tạo lại index (15s trước khi test lại).
+        // 4. index_with: Bắn 20 req/s truy vấn để đo độ trễ tra cứu index scan.
         index_without: {
             executor: 'constant-arrival-rate',
             rate: 20, timeUnit: '1s', duration: '60s',
@@ -98,13 +112,15 @@ export const options = {
         },
     },
     summaryTrendStats: ['avg', 'p(90)', 'p(95)', 'max'],
+    // Cấu hình ngưỡng giới hạn mong muốn cho test (Pass/Fail criteria)
+    // Nếu kết quả không đạt những ngưỡng này, k6 command sẽ báo failed
     thresholds: {
-        'READ_errors':['rate<0.01'],
-        'WRITE_errors':['rate<0.10'],
-        'READ_latency':['p(95)<300'],
-        'WRITE_latency':['p(95)<800'],
-        'READ_latency_no_index':['p(95)<500'],
-        'READ_latency_with_index':['p(95)<150'],
+        'READ_errors':['rate<0.01'],             // Tỉ lệ lỗi đọc dưới 1%
+        'WRITE_errors':['rate<0.10'],            // Tỉ lệ lỗi ghi hệ thống dưới 10%
+        'READ_latency':['p(95)<300'],            // 95% request đọc phải truy vấn xong dưới 300ms
+        'WRITE_latency':['p(95)<800'],           // 95% request ghi phải xong dưới 800ms
+        'READ_latency_no_index':['p(95)<500'],   // 95% request đọc (khi không có index) < 500ms
+        'READ_latency_with_index':['p(95)<150'], // 95% request đọc (có index) < 150ms để thấy sự cải thiện
     }
 };
 
@@ -119,19 +135,26 @@ let slaveDb;
 let lagMasterDb;
 let lagSlaveDb;
 
+// Setup: Chạy 1 lần duy nhất trước khi cấp phát Virtual Users (VUs)
+// Hàm setup này khởi tạo kết nối tạm thời tới Slave DB để chuẩn bị dữ liệu (như mảng chứa sinh viên, phòng ban đang hoạt động) 
+// dữ liệu này sẽ được truyền một lần (qua object trả về) tới tất cả các hàm kịch bản bên dưới.
 export function setup() {
     const initDb = sql.open(mysql, __ENV.SLAVE_DB);
     let students = [], rooms = [];
     let effectiveDate = '';
     try {
+        // Query list các student_id của những sinh viên đang hoạt động (status = 1) để nạp vào data set
         const sRows = initDb.query(
             "SELECT student_id FROM students WHERE status = 1 LIMIT 1000;");
         for (const r of sRows) students.push(r.student_id);
 
+        // Query list các room_id của những phòng còn trống (status = 'available')
         const rRows = initDb.query(
             "SELECT room_id FROM rooms WHERE status = 'available' LIMIT 100;");
         for (const r of rRows) rooms.push(r.room_id);
 
+        // Chuẩn bị dữ liệu ngày tháng (effectiveDate)
+        // Lấy ngày cuối cùng của tháng hiện tại (phục vụ logic chuyển/thanh lý phòng thường vào cuối tháng)
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -153,12 +176,17 @@ export function setup() {
     };
 }
 
+// Kịch bản đọc (read): Giả lập người dùng (Admin) tra cứu danh sách nợ quá hạn qua View
+// - Tác động trực tiếp đến Slave database để đọc dữ liệu báo cáo
+// - Ghi nhận lại độ trễ `readLatencies`, số lượng thành công, và tỉ lệ lỗi để theo dõi trên custom metrics.
 export function read_workload(data) {
     if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     const startTime = Date.now();
     let success = false;
     try {
+        // Thực thi câu truy vấn đọc: lấy 200 bản ghi nợ quá hạn nặng nhất
+        // View 'vw_overdue_debtors' trong CSDL sẽ tổng hợp dữ liệu từ bảng contracts và invoices
         slaveDb.query(
             "SELECT * FROM vw_overdue_debtors " +
             "ORDER BY days_overdue DESC LIMIT 200;");
@@ -167,13 +195,23 @@ export function read_workload(data) {
         console.error("Read Error: " + err.message);
     }
 
+    // Xác nhận request thành công (không gặp lỗi SQL, đứt kết nối...)
     check(success, { 'read successful': (s) => s === true });
+    
+    // Đo đếm và ghi nhận Latency (Thời gian phản hồi tính bằng ms) vào đồ thị READ_latency
     readLatencies.add(Date.now() - startTime,
         { scenario: exec.scenario.name });
     readCount.add(1);
+    
+    // Nếu success = false -> đánh dấu là 1 error để Rate() `READ_errors` tự động tính toán % lỗi
     readErrors.add(!success);
 }
 
+// Kịch bản ghi (write): Thực hiện chuyển phòng (Transfer Room) cho sinh viên
+// - Lấy ngẫu nhiên sinh viên và phòng từ object 'data' (được sinh ra trong hàm setup) 
+// - Chạy Transaction thực thi trên Master database qua lời gọi Procedure `sp_transfer_room`
+// - Phân biệt rành mạch giữa Lỗi Hệ Thống (ví dụ đứt kết nối, syntax - làm giảm success) 
+//   với các Ngoại lệ Nghiệp vụ (như "phòng đầy", "phòng đang bảo trì" - được tính là Pass query, không tính vào Errors).
 export function write_workload(data) {
     if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
 
@@ -211,12 +249,14 @@ export function write_workload(data) {
 }
 
 export function check_replication_lag(data) {
-    // Chỉ cần kết nối Slave để đọc replication status
+    // Kịch bản Tracking: Kết nối trực tiếp vào Slave DB để theo dõi tiến trình Replication
+    // Mục tiêu: Lấy thông số `Seconds_Behind_Source` từ MySQL để đo độ trễ (độ lệch) cập nhật 
+    // dữ liệu khi các request nhánh write_workload tạo ra thay đổi lớn trên Master.
     if (!lagSlaveDb) lagSlaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
     try {
-        // Dùng SHOW REPLICA STATUS thay vì COUNT(*) trên bảng dữ liệu
-        // Không tạo thêm tải lên data tables, kết quả chính xác hơn
+        // Dùng `SHOW REPLICA STATUS` vì đây là câu lệnh meta của MySQL, nó trả về thông tin trạng thái 
+        // của luồng IO và SQL thread trên Slave ngay lập tức mà không phải tốn cost đếm COUNT(*) trên bảng dữ liệu.
         const rows = lagSlaveDb.query("SHOW REPLICA STATUS;");
 
         if (rows.length === 0) {
@@ -224,15 +264,16 @@ export function check_replication_lag(data) {
             return;
         }
 
-        // Seconds_Behind_Source: số giây slave đang chậm hơn master
-        // NULL = IO thread không chạy, 0 = đồng bộ hoàn toàn
+        // `Seconds_Behind_Source` chỉ ra số giây Slave đang bị tụt lại so với Master.
+        // Giá trị NULL có nghĩa là Slave IO/SQL thread đã bị dừng chạy (Ví dụ đứt kết nối mạng giữa 2 node)
+        // Giá trị 0 nghĩa là 2 databases đã đồng bộ và song phẳng (Consistent).
         const lag = rows[0].Seconds_Behind_Source;
 
         if (lag === null) {
             console.warn("[LAG] Replication IO thread không chạy");
-            replicationLag.add(-1);  // -1 = signal lỗi replication
+            replicationLag.add(-1);  // Ghi nhận -1 vào đồ thị ngụ ý Replication bị gián đoạn/gãy
         } else {
-            replicationLag.add(lag * 1000);  // Đổi sang ms cho nhất quán với metrics khác
+            replicationLag.add(lag * 1000);  // Quy đổi số giây lag ra millisecond (ms) để metric cùng hệ chiếu.
             if (lag > 0) {
                 console.log(`[LAG] Seconds_Behind_Source = ${lag}s`);
             }
@@ -242,6 +283,9 @@ export function check_replication_lag(data) {
     }
 }
 
+// Kịch bản truy vấn chậm (No Index): Đo hiệu năng khi hệ thống CHƯA được tối ưu
+// - Thực hiện truy vấn trên bảng invoices có hàm lọc theo trạng thái và ngày, sort descending
+// - Kết quả ghi nhận vào metric riêng biệt `noIndexLatency` để vẽ đồ thị so sánh A/B test.
 export function read_without_index(data) {
     if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
@@ -268,6 +312,10 @@ export function read_without_index(data) {
     readErrors.add(!success);
 }
 
+// Kịch bản truy vấn nhanh (With Index): Đo hiệu năng khi hệ thống ĐÃ đắp thêm Chỉ mục Covering
+// - Thực hiện câu truy vấn 100% giống kết cấu với `read_without_index` nhưng CSDL lúc này đã 
+//   được chạy DDL tạo Index riêng hỗ trợ trên các cột `paid_status` và `due_date`.
+// - Kết quả trễ ghi nhận vào `withIndexLatency`.
 export function read_with_index(data) {
     if (!slaveDb) slaveDb = sql.open(mysql, __ENV.SLAVE_DB);
 
@@ -294,6 +342,10 @@ export function read_with_index(data) {
     readErrors.add(!success);
 }
 
+// Hàm hỗ trợ (Pre-requisite step): Xoá index để thiết lập trạng thái trước tối ưu
+// - DROP INDEX luôn được thực hiện qua kết nối Master (DDL statement)
+// - Thông qua mô hình replication, Slave tự động bị xoá index đi. 
+// - Hàm chạy 1 lần nhờ config `shared-iterations` của K6.
 export function drop_index_for_benchmark(data) {
     // Cần dùng Master vì DROP INDEX là DDL statement
     if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
@@ -307,6 +359,9 @@ export function drop_index_for_benchmark(data) {
     }
 }
 
+// Hàm hỗ trợ (Pre-requisite step): Khôi phục index để test hiệu suất sau tối ưu
+// - ADD INDEX thực thi trên Master, đồng bộ Index qua file binary log của MySQL.
+// - Thời gian trống 15 giây sau khi gọi hàm thiết lập ở options cho Replication đủ thời gian đồng bộ.
 export function create_index_for_benchmark(data) {
     if (!masterDb) masterDb = sql.open(mysql, __ENV.MASTER_DB);
     try {
