@@ -272,7 +272,7 @@ Dự án thiết kế 6 bảng tối thiểu:
 
 ### Chi tiết thiết kế
 Xem tại: 
-[Data Dictionary](docs\data-dictionary.md)
+[Data Dictionary](docs/data-dictionary.md)
 
 # 2.Hướng dẫn khởi chạy
 ## Phần 1: Cấu hình Docker
