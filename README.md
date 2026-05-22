@@ -260,7 +260,7 @@ Bước 5: Kiểm tra kết quả cấu hình
 docker exec -it mysql-slave mysql -u root -p<root_password> -e "SHOW REPLICA STATUS\G"
 ```
 
-trạng thái thành công khi
+Trạng thái thành công khi:
 ```text
 Replica_IO_Running: Yes
 Replica_SQL_Running: Yes
@@ -284,7 +284,7 @@ Chạy đoạn code ở phần sau rồi nhập số lượng mẫu sau đây (t
 
 **Chạy lệnh**
 
-Chạy script sau để khởi tạo dữ liệu vào database qua Streamlit container
+Chạy script sau để khởi tạo dữ liệu vào database qua Streamlit container:
 
 ```bash
 docker-compose run --rm streamlit python -m scripts.generate_data
