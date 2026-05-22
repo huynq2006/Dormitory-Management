@@ -1,4 +1,4 @@
-# 🏢 Dormitory Management System (DBMS Optimization)
+# Dormitory Management System (DBMS Optimization)
 
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
