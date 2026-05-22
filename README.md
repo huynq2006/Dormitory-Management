@@ -72,6 +72,81 @@ This project focuses on building and optimizing a relational database for a Dorm
 ## Database Design
 ![ERD](imgs/dbms-project-erd.png)
 
+## Setup Instruction
+### Part 1: Docker Configuration
+**Prerequisites**
+- Docker Desktop: Installed and Running.
+- Git: Installed.
+- Environment Variables: Create a .env file based on the .env.example template.
+
+**Run Commands**
+
+Step 1: Clean up the old environment
+```bash
+docker-compose down -v
+```
+
+Step 2: Start the Docker system
+```bash
+docker-compose up -d --build
+```
+
+Step 3: Check status
+```bash
+docker ps
+```
+
+Step 4: Activate replication
+```bash
+docker exec -it mysql-slave mysql -u root -p<root_password> -e "CHANGE MASTER TO MASTER_HOST='mysql-master', MASTER_USER='repl_user', MASTER_PASSWORD='Repl_Pass@123', MASTER_AUTO_POSITION=1; START SLAVE;"
+```
+Note: Replace root_password with the password configured in the .env file.
+
+If the system reports an error related to running replication threads:
+```text
+ERROR 3081 (HY000) at line 1: This operation cannot be performed with running replication threads; run STOP REPLICA FOR CHANNEL first
+```
+
+Run the following command:
+```bash
+docker exec -it mysql-slave mysql -u root -p<root_password> -e "STOP REPLICA; CHANGE MASTER TO MASTER_HOST='mysql-master', MASTER_USER='repl_user', MASTER_PASSWORD='Repl_Pass@123', MASTER_AUTO_POSITION=1; START REPLICA;"
+```
+
+Step 5: Verify configuration results
+```bash
+docker exec -it mysql-slave mysql -u root -p<root_password> -e "SHOW REPLICA STATUS\G"
+```
+
+Success status when:
+```text
+Replica_IO_Running: Yes
+Replica_SQL_Running: Yes
+```
+
+**Start/Stop containers temporarily**
+
+
+```bash
+docker-compose start # Restart
+docker-compose stop # Pause
+```
+
+### Part 2: Data Generation via Faker
+**Sample Quantity**
+
+Run the code in the following section and enter the following quantities (optional):
+- 5000 students
+- 1000 rooms
+- 5000 contracts
+
+**Run Commands**
+
+Run the following script to initialize data into the database via the Streamlit container:
+
+```bash
+docker-compose run --rm streamlit python -m scripts.generate_data
+```
+
 ---
 
 # 🇻🇳 1. Tổng quan dự án (Vietnamese)
@@ -170,12 +245,12 @@ docker exec -it mysql-slave mysql -u root -p<root_password> -e "CHANGE MASTER TO
 ```
 Lưu ý: Thay root_password bằng password đã thiết lập trong file .env.
 
-Nếu hệ thống báo lỗi liên quan đến running replication threads
+Nếu hệ thống báo lỗi liên quan đến running replication threads:
 ```text
 ERROR 3081 (HY000) at line 1: This operation cannot be performed with running replication threads; run STOP REPLICA FOR CHANNEL first
 ```
 
-hãy chạy lệnh sau
+Hãy chạy lệnh sau:
 ```bash
 docker exec -it mysql-slave mysql -u root -p<root_password> -e "STOP REPLICA; CHANGE MASTER TO MASTER_HOST='mysql-master', MASTER_USER='repl_user', MASTER_PASSWORD='Repl_Pass@123', MASTER_AUTO_POSITION=1; START REPLICA;"
 ```
