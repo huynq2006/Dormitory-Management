@@ -247,6 +247,33 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 ## Thiết kế Cơ sở Dữ liệu
 ![ERD](imgs/dbms-project-erd.png)
 
+### Sơ đồ bảng
+Dự án thiết kế 6 bảng tối thiểu:
+- `students`
+- `rooms`
+- `contracts`
+- `meter_readings`
+- `invoices`
+- `audit_log`
+
+### Quy tắc nghiệp vụ
+
+- BR-01: Một `room` không được có `current_occupancy > capacity`  
+- BR-02: Một `student` **tối đa 1** `contract` có `status='active'` tại một thời điểm  
+- BR-03: Một `room` có thể có nhiều hợp đồng theo thời gian, nhưng cùng thời điểm không vượt capacity  
+- BR-04: Mỗi phòng mỗi tháng chỉ có tối đa 1 bản ghi `meter_readings`  
+- BR-05: Mỗi phòng mỗi tháng chỉ có tối đa 1 `invoice` (hoặc 1 invoice/contract/tháng nếu chọn gắn theo contract)
+- BR-06: Thay đổi hợp đồng chỉ có hiệu lực cuối tháng  
+  - Sinh viên không được phép "chuyển phòng giữa tháng".  
+  - Mọi thay đổi trạng thái `contracts.status` (active → ended/cancelled) và mọi hợp đồng mới (`INSERT`) đều được coi là có hiệu lực tại ngày cuối tháng (LAST_DAY) của tháng hiện tại hoặc tháng được cấu hình.
+
+> Lưu ý: BR-02 trong MySQL khó enforce tuyệt đối bằng UNIQUE constraint nếu dùng ENUM/status.
+> Quyết định: enforce bằng **procedure/transaction** + index hỗ trợ.
+
+### Chi tiết thiết kế
+Xem tại: 
+[Data Dictionary](docs\data-dictionary.md)
+
 ## Hướng dẫn khởi chạy
 ### Phần 1: Cấu hình Docker
 **Chuẩn bị môi trường**
