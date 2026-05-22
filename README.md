@@ -147,6 +147,38 @@ Run the following script to initialize data into the database via the Streamlit 
 docker-compose run --rm streamlit python -m scripts.generate_data
 ```
 
+### Part 3: Performance Evaluation
+**Run Commands**
+
+Step 1: Build image from Dockerfile.k6
+```bash
+docker build -f scripts/Dockerfile.k6 -t k6-sql .
+
+Bước 1: Build image trong file Dockerfile.k6
+```bash
+docker build -f scripts/Dockerfile.k6 -t k6-sql .
+```
+
+Step 2: Create the results directory to store output (if it does not exist)
+```bash
+mkdir results
+```
+
+Step 3: Run the benchmark file
+```bash
+docker run --rm ` -v "${PWD}:/app" -w /app ` -e MASTER_DB="root:<insert_password>@tcp(host.docker.internal:13306)/dormitory_management" ` -e SLAVE_DB="root:<insert_password>@tcp(host.docker.internal:13307)/dormitory_management" ` k6-sql run scripts/benchmark.js
+```
+
+Note: Replace `<insert_password>` with the password configured in the .env file.
+
+Step 4: Export raw CSV file (optional)
+```bash
+docker run --rm -v "${PWD}:/app" -w /app `
+  	-e MASTER_DB="root:123456@tcp(host.docker.internal:13306)/dormitory_management" `
+-e SLAVE_DB="root:123456@tcp(host.docker.internal:13307)/dormitory_management" `
+k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.jsn
+```
+
 ---
 
 # 🇻🇳 1. Tổng quan dự án (Vietnamese)
