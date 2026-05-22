@@ -6,7 +6,7 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B.svg)](https://streamlit.io/)
 [![k6](https://img.shields.io/badge/k6-Load_Testing-7D64FF.svg)](https://k6.io/)
 
-# 🇬🇧 1. Project Overview (English)
+# 1. Project Overview (English)
 This project focuses on building and optimizing a relational database for a Dormitory/Apartment Management System. Moving beyond basic CRUD operations, this system demonstrates advanced database techniques to handle real-world concurrency, automated batch processing, and high-traffic read operations.
 
 ## Core Objectives
@@ -72,8 +72,8 @@ This project focuses on building and optimizing a relational database for a Dorm
 ## Database Design
 ![ERD](imgs/dbms-project-erd.png)
 
-## Setup Instruction
-### Part 1: Docker Configuration
+# 2. Setup Instruction
+## Part 1: Docker Configuration
 **Prerequisites**
 - Docker Desktop: Installed and Running.
 - Git: Installed.
@@ -131,7 +131,7 @@ docker-compose start # Restart
 docker-compose stop # Pause
 ```
 
-### Part 2: Data Generation via Faker
+## Part 2: Data Generation via Faker
 **Sample Quantity**
 
 Run the code in the following section and enter the following quantities (optional):
@@ -147,7 +147,7 @@ Run the following script to initialize data into the database via the Streamlit 
 docker-compose run --rm streamlit python -m scripts.generate_data
 ```
 
-### Part 3: Performance Evaluation
+## Part 3: Performance Evaluation
 **Run Commands**
 
 Step 1: Build image from Dockerfile.k6
@@ -181,7 +181,7 @@ k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.jsn
 
 ---
 
-# 🇻🇳 1. Tổng quan dự án (Vietnamese)
+# 1. Tổng quan dự án (Vietnamese)
 Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở dữ liệu quan hệ cho Hệ thống Quản lý Ký túc xá/Chung cư. Thay vì chỉ dừng lại ở các thao tác truy vấn cơ bản, hệ thống ứng dụng các kỹ thuật CSDL nâng cao để giải quyết bài toán thực tế về tranh chấp dữ liệu, tự động hóa chốt công nợ và chịu tải cao.
 
 ## Mục tiêu cốt lõi
@@ -274,8 +274,8 @@ Dự án thiết kế 6 bảng tối thiểu:
 Xem tại: 
 [Data Dictionary](docs\data-dictionary.md)
 
-## Hướng dẫn khởi chạy
-### Phần 1: Cấu hình Docker
+# 2.Hướng dẫn khởi chạy
+## Phần 1: Cấu hình Docker
 **Chuẩn bị môi trường**
 - Docker Desktop: Đã cài đặt và đang hoạt động (Running).
 - Git: Đã được cài đặt.
@@ -333,7 +333,7 @@ docker-compose start # Khởi động lại
 docker-compose stop # Tạm dừng
 ```
 
-### Phần 2: Sinh dữ liệu qua Faker
+## Phần 2: Sinh dữ liệu qua Faker
 **Số lượng mẫu**
 
 Chạy đoạn code ở phần sau rồi nhập số lượng mẫu sau đây (tùy chọn):
@@ -349,7 +349,7 @@ Chạy script sau để khởi tạo dữ liệu vào database qua Streamlit con
 docker-compose run --rm streamlit python -m scripts.generate_data
 ```
 
-### Phần 3: Đánh giá hiệu năng
+## Phần 3: Đánh giá hiệu năng
 **Chạy lệnh**
 
 Bước 1: Build image trong file Dockerfile.k6
