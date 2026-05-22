@@ -243,7 +243,7 @@ Bước 4: Kích hoạt replication
 ```bash
 docker exec -it mysql-slave mysql -u root -p<root_password> -e "CHANGE MASTER TO MASTER_HOST='mysql-master', MASTER_USER='repl_user', MASTER_PASSWORD='Repl_Pass@123', MASTER_AUTO_POSITION=1; START SLAVE;"
 ```
-Lưu ý: Thay root_password bằng password đã thiết lập trong file .env.
+Lưu ý: Thay `<root_password>` bằng password đã thiết lập trong file .env.
 
 Nếu hệ thống báo lỗi liên quan đến running replication threads:
 ```text
@@ -288,4 +288,32 @@ Chạy script sau để khởi tạo dữ liệu vào database qua Streamlit con
 
 ```bash
 docker-compose run --rm streamlit python -m scripts.generate_data
+```
+
+### Phần 3: Đánh giá hiệu năng
+**Chạy lệnh**
+
+Bước 1: Build image trong file Dockerfile.k6
+```bash
+docker build -f scripts/Dockerfile.k6 -t k6-sql .
+```
+
+Bước 2: Tạo thư mục results lưu trữ kết quả (nếu chưa có)
+```bash
+mkdir results
+```
+
+Bước 3: Chạy file benchmark
+```bash
+docker run --rm ` -v "${PWD}:/app" -w /app ` -e MASTER_DB="root:<insert_password>@tcp(host.docker.internal:13306)/dormitory_management" ` -e SLAVE_DB="root:<insert_password>@tcp(host.docker.internal:13307)/dormitory_management" ` k6-sql run scripts/benchmark.js
+```
+
+Lưu ý: Thay `<insert_password>` bằng password đã thiết lập trong file .env.
+
+Bước 4: Xuất file raw csv (tùy chọn)
+```bash
+docker run --rm -v "${PWD}:/app" -w /app `
+  	-e MASTER_DB="root:123456@tcp(host.docker.internal:13306)/dormitory_management" `
+-e SLAVE_DB="root:123456@tcp(host.docker.internal:13307)/dormitory_management" `
+k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.jsn
 ```
