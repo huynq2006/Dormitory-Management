@@ -68,3 +68,6 @@ desktop.ini
 
 # Others
 *.csv
+results/
+__init__.py
+tempCodeRunnerFile.py
