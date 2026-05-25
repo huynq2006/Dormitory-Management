@@ -266,6 +266,8 @@ Dự án thiết kế 6 bảng tối thiểu:
 - BR-06: Thay đổi hợp đồng chỉ có hiệu lực cuối tháng  
   - Sinh viên không được phép "chuyển phòng giữa tháng".  
   - Mọi thay đổi trạng thái `contracts.status` (active → ended/cancelled) và mọi hợp đồng mới (`INSERT`) đều được coi là có hiệu lực tại ngày cuối tháng (LAST_DAY) của tháng hiện tại hoặc tháng được cấu hình.
+- BR-07: Quy tắc xếp phòng: Sinh viên Nam được xếp vào các phòng mang số chẵn; Sinh viên Nữ được xếp vào các phòng mang số lẻ.
+- BR-08: Khi sinh viên có trạng thái 0 (inactive) được xếp phòng thành công, hệ thống tự động đổi trạng thái sang 1 (active) và tạo hợp đồng mới.
 
 > Lưu ý: BR-02 trong MySQL khó enforce tuyệt đối bằng UNIQUE constraint nếu dùng ENUM/status.
 > Quyết định: enforce bằng **procedure/transaction** + index hỗ trợ.
