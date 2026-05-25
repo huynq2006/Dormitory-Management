@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS students (
     student_code VARCHAR(20) UNIQUE NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    gender ENUM('M', 'F', 'O') NOT NULL,
+    gender ENUM('M', 'F') NOT NULL,
     dob DATE,
     email VARCHAR(100) UNIQUE NOT NULL,
     phone VARCHAR(20) UNIQUE,

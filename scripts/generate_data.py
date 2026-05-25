@@ -55,9 +55,9 @@ def generated_students(n):
     """
     students = []
     
-    if n > 10000:
-        print("Limit reached: Student count cannot exceed 10,000")
-        n = 10000
+    # if n > 10000:
+    #     print("Limit reached: Student count cannot exceed 10,000")
+    #     n = 10000
     
     for _ in range(n):
         first_name = fake.vn_first_name()
@@ -72,6 +72,10 @@ def generated_students(n):
         base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
         email = f"{base_email}@vnu.edu.vn"
         
+        status = 1
+        if _ >= 9000:
+            status = 0
+        
         data = {
             "student_code": full_student_code,
             "first_name" : first_name,
@@ -80,7 +84,7 @@ def generated_students(n):
             "dob" : dob,
             "email": email,
             "phone": fake.unique.phone_number()[:20],
-            "status": 1        
+            "status": status     
         }
         students.append(data)
       
@@ -135,6 +139,16 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     
     n = min(n, len(all_student_ids))
     selected_students = random.sample(all_student_ids, n)
+    
+    active_students = [s_id for s_id, info in all_student_infos.items() if info[1] == 1]
+    
+    # Shuffling students' info 
+    random.shuffle(active_students)
+        
+    waiting_list = {
+        "M": [], 
+        "F": []  
+    }
         
     # Track current occupancy to prevent overfilling rooms during data generation
     active_counts = {r_id: 0 for r_id in all_room_ids}
@@ -144,7 +158,7 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
 
     for i in range(n):
         student_id = selected_students[i]
-        student_gender = all_student_infos[student_id]
+        student_gender = all_student_infos[student_id][0]
         start_date = fake.date_between(start_date='-6m', end_date='today')
         intended_end_date = start_date + timedelta(days=180)
         
@@ -172,10 +186,9 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
             available_rooms = [r for r in gender_spr if active_counts[r] < room_caps.get(r, 0)]
             
             if not available_rooms:
-                # If no space left, force contract to 'ended' to maintain integrity
-                status = 'ended'
-                final_end_date = start_date + timedelta(days=10)
-                room_id = random.choice(gender_spr) if gender_spr else random.choice(all_room_ids)
+                # If no space left, student_id will be in the waiting list. After changes in current_occupancy happen, waiting list will generate its own contract data
+                waiting_list[student_gender].append(student_id)
+                continue
             else:
                 room_id = random.choice(available_rooms)
                 active_counts[room_id] += 1
@@ -355,8 +368,8 @@ def main():
         insert_rooms(connection, raw_rooms)
         
         # Refresh IDs and capacity info from DB for foreign key consistency
-        cursor.execute("SELECT student_id, gender FROM students")
-        all_student_infos = {stu_ID["student_id"] : stu_ID["gender"] for stu_ID in cursor.fetchall()}
+        cursor.execute("SELECT student_id, gender, status FROM students")
+        all_student_infos = {stu_ID["student_id"] : (stu_ID["gender"], stu_ID["status"]) for stu_ID in cursor.fetchall()}
     
         cursor.execute("SELECT room_id, capacity FROM rooms")
         rooms_data = cursor.fetchall()
