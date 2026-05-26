@@ -72,9 +72,15 @@ def generated_students(n):
         base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
         email = f"{base_email}@vnu.edu.vn"
         
-        status = 1
-        if _ >= 9000:
+        rand_val = random.random()
+        
+        if _ > 9000:
             status = 0
+        
+        if rand_val < 0.05:
+            status = 0
+        else:
+            status = 1
         
         data = {
             "student_code": full_student_code,
@@ -101,10 +107,10 @@ def generated_rooms(n):
         n = 1000
     
     building_configs = [
-        {"name": "Building A", "capacity": 6, "price": 1000000, "count": 400},  # 400 phòng
-        {"name": "Building B", "capacity": 8, "price": 800000, "count": 300},   # 300 phòng
-        {"name": "Building C", "capacity": 14, "price": 600000, "count": 150},  # 150 phòng
-        {"name": "Building D", "capacity": 14, "price": 300000, "count": 150},  # 150 phòng
+        {"name": "Building A", "capacity": 6, "price": 1000000, "count": 100},  # 400 phòng
+        {"name": "Building B", "capacity": 8, "price": 800000, "count": 200},   # 300 phòng
+        {"name": "Building C", "capacity": 14, "price": 600000, "count": 100},  # 150 phòng
+        {"name": "Building D", "capacity": 14, "price": 300000, "count": 100},  # 150 phòng
     ]
     
     rooms_created = 0
@@ -124,7 +130,8 @@ def generated_rooms(n):
             
             rooms.append(data)
             rooms_created += 1
-        
+    
+    print(rooms_created)
     return rooms
 
 def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
@@ -135,15 +142,8 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     contracts = []  
     today = date.today()
     
-    all_student_ids = list(all_student_infos.keys())
-    
-    n = min(n, len(all_student_ids))
-    selected_students = random.sample(all_student_ids, n)
-    
     active_students = [s_id for s_id, info in all_student_infos.items() if info[1] == 1]
-    
-    # Shuffling students' info 
-    random.shuffle(active_students)
+    active_students.sort()
         
     waiting_list = {
         "M": [], 
@@ -156,8 +156,10 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     odd_rooms = [r_id for r_id in all_room_ids if r_id % 2 != 0] # Seperate odd and even room_ids' from rooms 
     even_rooms = [r_id for r_id in all_room_ids if r_id % 2 == 0] # Odd rooms for male, even rooms for female
 
-    for i in range(n):
-        student_id = selected_students[i]
+    total_attempts = min(n, len(active_students))
+    
+    for i in range(total_attempts):
+        student_id = active_students[i]
         student_gender = all_student_infos[student_id][0]
         start_date = fake.date_between(start_date='-6m', end_date='today')
         intended_end_date = start_date + timedelta(days=180)
@@ -195,7 +197,7 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
         else:
             # Historical or cancelled records don't occupy current capacity
             room_id = random.choice(gender_spr) if gender_spr else random.choice(all_room_ids)
-        
+            
         data = {
             "student_id" : student_id,
             "room_id" : room_id,
