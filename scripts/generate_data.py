@@ -55,9 +55,9 @@ def generated_students(n):
     """
     students = []
     
-    if n > 10000:
-        print("Limit reached: Student count cannot exceed 10,000")
-        n = 10000
+    # if n > 10000:
+    #     print("Limit reached: Student count cannot exceed 10,000")
+    #     n = 10000
     
     for _ in range(n):
         first_name = fake.vn_first_name()
@@ -72,15 +72,25 @@ def generated_students(n):
         base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
         email = f"{base_email}@vnu.edu.vn"
         
+        rand_val = random.random()
+        
+        if _ > 9000:
+            status = 0
+        
+        if rand_val < 0.05:
+            status = 0
+        else:
+            status = 1
+        
         data = {
             "student_code": full_student_code,
             "first_name" : first_name,
             "last_name" : last_name,
-            "gender" : fake.random_element(elements=('M', 'F', 'O')),
+            "gender" : fake.random_element(elements=('M', 'F')),
             "dob" : dob,
             "email": email,
             "phone": fake.unique.phone_number()[:20],
-            "status": 1        
+            "status": status     
         }
         students.append(data)
       
@@ -96,19 +106,35 @@ def generated_rooms(n):
         print("Warning: Room count cannot exceed 1,000")
         n = 1000
     
-    for _ in range(n):
-        data = {
-            "building" : random.choice(["Building A", "Building B", "Building C", "Building D"]),
-            "capacity": 5,
-            "current_occupancy": 0,
-            "base_price": round(random.uniform(50.0, 200.0), 2),
-            "status": "available"
-        }
-        rooms.append(data)
+    building_configs = [
+        {"name": "Building A", "capacity": 6, "price": 1000000, "count": 100},  # 400 phòng
+        {"name": "Building B", "capacity": 8, "price": 800000, "count": 200},   # 300 phòng
+        {"name": "Building C", "capacity": 14, "price": 600000, "count": 100},  # 150 phòng
+        {"name": "Building D", "capacity": 14, "price": 300000, "count": 100},  # 150 phòng
+    ]
+    
+    rooms_created = 0
         
+    for config in building_configs:
+        for _ in range(config["count"]):
+            if rooms_created >= n: 
+                return rooms    
+            
+            data = {
+                "building" : config["name"],
+                "capacity": config["capacity"],
+                "current_occupancy": 0,
+                "base_price": config["price"],
+                "status": "available"
+            }
+            
+            rooms.append(data)
+            rooms_created += 1
+    
+    print(rooms_created)
     return rooms
 
-def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
+def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     """
     Simulates rental contracts between students and rooms.
     Includes logic for active, ended, and cancelled statuses while respecting room capacity.
@@ -116,14 +142,25 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
     contracts = []  
     today = date.today()
     
-    n = min(n, len(all_student_ids))
-    selected_students = random.sample(all_student_ids, n)
+    active_students = [s_id for s_id, info in all_student_infos.items() if info[1] == 1]
+    active_students.sort()
+        
+    waiting_list = {
+        "M": [], 
+        "F": []  
+    }
         
     # Track current occupancy to prevent overfilling rooms during data generation
     active_counts = {r_id: 0 for r_id in all_room_ids}
+    
+    odd_rooms = [r_id for r_id in all_room_ids if r_id % 2 != 0] # Seperate odd and even room_ids' from rooms 
+    even_rooms = [r_id for r_id in all_room_ids if r_id % 2 == 0] # Odd rooms for male, even rooms for female
 
-    for i in range(n):
-        student_id = selected_students[i]
+    total_attempts = min(n, len(active_students))
+    
+    for i in range(total_attempts):
+        student_id = active_students[i]
+        student_gender = all_student_infos[student_id][0]
         start_date = fake.date_between(start_date='-6m', end_date='today')
         intended_end_date = start_date + timedelta(days=180)
         
@@ -140,23 +177,27 @@ def generated_contracts(n, all_room_ids, all_student_ids, room_caps):
             status = 'active'
             final_end_date = intended_end_date
         
+        if student_gender == "M": 
+            gender_spr = odd_rooms
+        else:
+            gender_spr = even_rooms
+        
         room_id = None
         if status == 'active':
             # Only pick rooms that haven't reached their capacity limit
-            available_rooms = [r for r in all_room_ids if active_counts[r] < room_caps.get(r, 0)]
+            available_rooms = [r for r in gender_spr if active_counts[r] < room_caps.get(r, 0)]
             
             if not available_rooms:
-                # If no space left, force contract to 'ended' to maintain integrity
-                status = 'ended'
-                final_end_date = start_date + timedelta(days=10)
-                room_id = random.choice(all_room_ids)
+                # If no space left, student_id will be in the waiting list. After changes in current_occupancy happen, waiting list will generate its own contract data
+                waiting_list[student_gender].append(student_id)
+                continue
             else:
                 room_id = random.choice(available_rooms)
                 active_counts[room_id] += 1
         else:
             # Historical or cancelled records don't occupy current capacity
-            room_id = random.choice(all_room_ids)
-        
+            room_id = random.choice(gender_spr) if gender_spr else random.choice(all_room_ids)
+            
         data = {
             "student_id" : student_id,
             "room_id" : room_id,
@@ -329,8 +370,8 @@ def main():
         insert_rooms(connection, raw_rooms)
         
         # Refresh IDs and capacity info from DB for foreign key consistency
-        cursor.execute("SELECT student_id FROM students")
-        all_student_ids = [stu_ID["student_id"] for stu_ID in cursor.fetchall()]
+        cursor.execute("SELECT student_id, gender, status FROM students")
+        all_student_infos = {stu_ID["student_id"] : (stu_ID["gender"], stu_ID["status"]) for stu_ID in cursor.fetchall()}
     
         cursor.execute("SELECT room_id, capacity FROM rooms")
         rooms_data = cursor.fetchall()
@@ -338,7 +379,7 @@ def main():
         all_room_ids = list(room_caps.keys())
         
         # Phase 2: Contracts (requires existing students/rooms)
-        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_ids, room_caps)
+        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_infos, room_caps)
         insert_contracts(connection, raw_contracts)
         
         # Phase 3: Utility Readings
