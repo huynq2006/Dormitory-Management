@@ -141,6 +141,7 @@ def fetch_student_info(student_code):
         SELECT 
             c.contract_id, 
             c.room_id, 
+            r.building,
             c.start_date, 
             c.end_date, 
             c.status AS contract_status, 
@@ -150,7 +151,38 @@ def fetch_student_info(student_code):
             s.phone
         FROM students s
         LEFT JOIN contracts c ON s.student_id = c.student_id
+        LEFT JOIN rooms r ON c.room_id = r.room_id
         WHERE s.student_code = %s
         ORDER BY c.start_date DESC
     """
     return fetch_data(query, (student_code,))
+
+def assign_room_to_student(student_id, room_id):
+    """
+    Assign an inactive student (status=0) to a room.
+    Calls sp_assign_room which:
+      - Validates the student is inactive and room is available
+      - Sets student status from 0 to 1 (active)
+      - Creates a new active contract starting today
+    """
+    query = "CALL sp_assign_room(%s, %s)"
+    return execute_write(query, (student_id, room_id))
+
+def fetch_inactive_students():
+    """
+    Fetch all inactive students (status = 0).
+    """
+    query = """
+        SELECT 
+            student_id, 
+            student_code, 
+            CONCAT(first_name, ' ', last_name) AS full_name, 
+            gender, 
+            email, 
+            phone, 
+            status
+        FROM students
+        WHERE status = 0
+    """
+    return fetch_data(query)
+

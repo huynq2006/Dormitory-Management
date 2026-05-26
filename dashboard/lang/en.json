@@ -16,6 +16,7 @@
         "overdue": "Overdue Debts",
         "sql_workspace": "SQL Workspace",
         "student_info": "Student Information",
+        "waiting_list": "Waiting List",
         "settings": "Settings"
     },
     "rooms": {
@@ -28,6 +29,7 @@
         "not_found": "No information found for this student code.",
         "contract_id": "Contract ID",
         "room_id": "Room ID",
+        "building": "Building",
         "start_date": "Start Date",
         "end_date": "End Date",
         "contract_status": "Contract Status",
@@ -38,5 +40,25 @@
         "gender_m": "Male",
         "gender_f": "Female",
         "gender_o": "Other"
+    },
+    "waiting_list": {
+        "title": "Waiting List (Inactive Students)",
+        "no_students": "No inactive students in the waiting list.",
+        "col_student_id": "Student ID",
+        "col_student_code": "Student Code",
+        "col_full_name": "Full Name",
+        "col_gender": "Gender",
+        "col_email": "Email",
+        "col_phone": "Phone Number",
+        "col_status": "Status",
+        "assign_title": "Assign Room to Waiting Student",
+        "assign_info": "Enter the Student ID and Room ID.",
+        "assign_student_id": "Student ID (student_id)",
+        "assign_room_id": "Room ID (room_id)",
+        "assign_button": "Confirm Assignment",
+        "assign_success": "\u2705 Successfully assigned! Student #{sid} \u2192 Room #{rid}.",
+        "assign_invalid_id": "Student ID and Room ID must be valid integers.",
+        "assign_error": "Error during room assignment",
+        "assign_missing_fields": "Please enter both a Student ID and a Room ID."
     }
 }
