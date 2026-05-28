@@ -16,6 +16,7 @@
         "overdue": "Nợ quá hạn",
         "sql_workspace": "SQL Workspace",
         "student_info": "Thông tin sinh viên",
+        "waiting_list": "Danh sách chờ",
         "settings": "Cài đặt"
     },
     "rooms": {
@@ -28,6 +29,7 @@
         "not_found": "Không tìm thấy thông tin cho mã sinh viên này.",
         "contract_id": "Mã hợp đồng",
         "room_id": "Mã phòng",
+        "building": "Tòa nhà",
         "start_date": "Ngày bắt đầu",
         "end_date": "Ngày kết thúc",
         "contract_status": "Trạng thái hợp đồng",
@@ -38,5 +40,25 @@
         "gender_m": "Nam",
         "gender_f": "Nữ",
         "gender_o": "Khác"
+    },
+    "waiting_list": {
+        "title": "Danh sách chờ (Sinh viên không hoạt động)",
+        "no_students": "Không có sinh viên không hoạt động nào trong danh sách chờ.",
+        "col_student_id": "Mã ID sinh viên",
+        "col_student_code": "Mã số sinh viên",
+        "col_full_name": "Họ và tên",
+        "col_gender": "Giới tính",
+        "col_email": "Email",
+        "col_phone": "Số điện thoại",
+        "col_status": "Trạng thái",
+        "assign_title": "Phân phòng cho sinh viên trong danh sách chờ",
+        "assign_info": "Nhập mã ID sinh viên và số phòng.",
+        "assign_student_id": "Mã ID sinh viên",
+        "assign_room_id": "Mã số phòng",
+        "assign_button": "Xác nhận phân phòng",
+        "assign_success": "Đã phân phòng thành công! Sinh viên #{sid} → Phòng #{rid}.",
+        "assign_invalid_id": "Mã ID sinh viên và mã phòng phải là số nguyên hợp lệ.",
+        "assign_error": "Lỗi khi phân phòng",
+        "assign_missing_fields": "Vui lòng nhập đầy đủ mã sinh viên và mã phòng."
     }
 }

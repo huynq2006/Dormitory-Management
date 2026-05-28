@@ -147,7 +147,16 @@ Run the following script to initialize data into the database via the Streamlit 
 docker-compose run --rm streamlit python -m scripts.generate_data
 ```
 
-## Part 3: Performance Evaluation
+## Part 3: User Interface Operations
+**Run Commands**
+
+Open any web browser and access the following address to perform operations on the user interface (such as switching rooms, managing rooms, waiting list, ...)
+
+```bash
+http://localhost:18501/
+```
+
+## Part 4: Performance Evaluation
 **Run Commands**
 
 Step 1: Build image from Dockerfile.k6
@@ -266,6 +275,8 @@ Dự án thiết kế 6 bảng tối thiểu:
 - BR-06: Thay đổi hợp đồng chỉ có hiệu lực cuối tháng  
   - Sinh viên không được phép "chuyển phòng giữa tháng".  
   - Mọi thay đổi trạng thái `contracts.status` (active → ended/cancelled) và mọi hợp đồng mới (`INSERT`) đều được coi là có hiệu lực tại ngày cuối tháng (LAST_DAY) của tháng hiện tại hoặc tháng được cấu hình.
+- BR-07: Quy tắc xếp phòng: Sinh viên Nam được xếp vào các phòng mang số chẵn; Sinh viên Nữ được xếp vào các phòng mang số lẻ.
+- BR-08: Khi sinh viên có trạng thái 0 (inactive) được xếp phòng thành công, hệ thống tự động đổi trạng thái sang 1 (active) và tạo hợp đồng mới.
 
 > Lưu ý: BR-02 trong MySQL khó enforce tuyệt đối bằng UNIQUE constraint nếu dùng ENUM/status.
 > Quyết định: enforce bằng **procedure/transaction** + index hỗ trợ.
@@ -349,7 +360,16 @@ Chạy script sau để khởi tạo dữ liệu vào database qua Streamlit con
 docker-compose run --rm streamlit python -m scripts.generate_data
 ```
 
-## Phần 3: Đánh giá hiệu năng
+## Phần 3: Thao tác giao diện người dùng
+**Chạy lệnh**
+
+Mở trình duyệt web bất kỳ, truy cập vào địa chỉ sau để thực hiện các thao tác trên giao diện người dùng (như chuyển phòng, quản lý phòng, danh sách chờ,...)
+
+```bash
+http://localhost:18501/
+```
+
+## Phần 4: Đánh giá hiệu năng
 **Chạy lệnh**
 
 Bước 1: Build image trong file Dockerfile.k6

@@ -211,3 +211,104 @@ BEGIN
 END //
 
 DELIMITER ;
+
+-- 4. Procedure: sp_assign_room
+-- Assigns an inactive student (status=0) to a room:
+--   - Validates student is inactive and room is available
+--   - Sets student status to 1 (active)
+--   - Creates a new active contract starting today
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS sp_assign_room //
+
+CREATE PROCEDURE sp_assign_room(
+    IN p_student_id  INT,
+    IN p_room_id     INT
+)
+BEGIN
+    DECLARE v_student_status    TINYINT;
+    DECLARE v_student_exists    INT DEFAULT 0;
+    DECLARE v_room_exists       INT DEFAULT 0;
+    DECLARE v_room_status       VARCHAR(20);
+    DECLARE v_capacity          INT;
+    DECLARE v_occupancy         INT;
+    DECLARE v_active_contracts  INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- 1. Check student exists
+    SELECT COUNT(*), MAX(status)
+    INTO v_student_exists, v_student_status
+    FROM students
+    WHERE student_id = p_student_id;
+
+    IF v_student_exists = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Student does not exist';
+    END IF;
+
+    -- 2. Check student is inactive (status = 0)
+    IF v_student_status <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Student is already active or does not qualify for assignment';
+    END IF;
+
+    -- 3. Check room exists and lock it
+    SELECT COUNT(*), MAX(status), MAX(capacity), MAX(current_occupancy)
+    INTO v_room_exists, v_room_status, v_capacity, v_occupancy
+    FROM rooms
+    WHERE room_id = p_room_id
+    FOR UPDATE;
+
+    IF v_room_exists = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room does not exist';
+    END IF;
+
+    IF v_room_status = 'maintenance' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room is under maintenance';
+    END IF;
+
+    IF v_occupancy >= v_capacity THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room is full';
+    END IF;
+
+    -- 4. Check student has no existing active contract
+    SELECT COUNT(*) INTO v_active_contracts
+    FROM contracts
+    WHERE student_id = p_student_id AND status = 'active';
+
+    IF v_active_contracts > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Student already has an active contract';
+    END IF;
+
+    -- 5. Activate the student
+    UPDATE students
+    SET status = 1
+    WHERE student_id = p_student_id;
+
+    -- 6. Create new active contract starting today
+    INSERT INTO contracts (student_id, room_id, start_date, status)
+    VALUES (p_student_id, p_room_id, CURDATE(), 'active');
+
+    -- 7. Audit log
+    CALL sp_add_audit_log(
+        'sp_assign_room',
+        'ASSIGN_ROOM',
+        CONCAT('Student ', p_student_id, ' assigned to room ', p_room_id, '. Status changed 0 -> 1.'),
+        NULL
+    );
+
+    COMMIT;
+END //
+
+DELIMITER ;
