@@ -70,7 +70,7 @@ def generated_rooms(n):
         
     for config in building_configs:
         for _ in range(config["count"]):
-            if rooms_created >= n: 
+            if rooms_created >= n: # Condition if the number of total rooms from all four buildings exceeds n
                 return rooms    
             
             data = {
@@ -83,8 +83,7 @@ def generated_rooms(n):
             
             rooms.append(data)
             rooms_created += 1
-    
-    print(rooms_created)
+
     return rooms
 
 def generated_students(n, room_capacity):
