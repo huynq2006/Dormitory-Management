@@ -49,47 +49,6 @@ def normalize_name(name):
     name = name.replace(" ", "")
     return name
 
-def generated_students(n):
-    """
-    Generates a list of student records with realistic student codes and university emails.
-    """
-    students = []
-    
-    # if n > 10000:
-    #     print("Limit reached: Student count cannot exceed 10,000")
-    #     n = 10000
-    
-    for _ in range(n):
-        first_name = fake.vn_first_name()
-        last_name = fake.vn_last_name()
-        # Generate unique 5-digit suffix
-        student_code = fake.unique.bothify(text='#####')
-        # Assign a random enrollment year prefix
-        prefix = random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
-        full_student_code = prefix + student_code
-        dob = fake.date_of_birth(minimum_age=18, maximum_age=25)
-        # Create standard VNU email format: name + code @ vnu.edu.vn
-        base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
-        email = f"{base_email}@vnu.edu.vn"
-        
-        status = 1
-        if _ >= 9000:
-            status = 0
-        
-        data = {
-            "student_code": full_student_code,
-            "first_name" : first_name,
-            "last_name" : last_name,
-            "gender" : fake.random_element(elements=('M', 'F')),
-            "dob" : dob,
-            "email": email,
-            "phone": fake.unique.phone_number()[:20],
-            "status": status     
-        }
-        students.append(data)
-      
-    return students
-
 def generated_rooms(n):
     """
     Generates dormitory room data across various buildings with pricing.
@@ -101,10 +60,10 @@ def generated_rooms(n):
         n = 1000
     
     building_configs = [
-        {"name": "Building A", "capacity": 6, "price": 1000000, "count": 400},  # 400 phòng
-        {"name": "Building B", "capacity": 8, "price": 800000, "count": 300},   # 300 phòng
-        {"name": "Building C", "capacity": 14, "price": 600000, "count": 150},  # 150 phòng
-        {"name": "Building D", "capacity": 14, "price": 300000, "count": 150},  # 150 phòng
+        {"name": "Building A", "capacity": 6, "price": 1000000, "count": 100},  # 100 phòng
+        {"name": "Building B", "capacity": 8, "price": 800000, "count": 200},   # 200 phòng
+        {"name": "Building C", "capacity": 14, "price": 600000, "count": 100},  # 100 phòng
+        {"name": "Building D", "capacity": 14, "price": 300000, "count": 100},  # 100 phòng
     ]
     
     rooms_created = 0
@@ -124,8 +83,58 @@ def generated_rooms(n):
             
             rooms.append(data)
             rooms_created += 1
-        
+    
+    print(rooms_created)
     return rooms
+
+def generated_students(n, room_capacity):
+    """
+    Generates a list of student records with realistic student codes and university emails.
+    """
+    students = []
+    
+    room_cap = sum(room_capacity.values())
+        
+    # if n > 10000:
+    #     print("Limit reached: Student count cannot exceed 10,000")
+    #     n = 10000
+    
+    for _ in range(n):
+        first_name = fake.vn_first_name()
+        last_name = fake.vn_last_name()
+        # Generate unique 5-digit suffix
+        student_code = fake.unique.bothify(text='#####')
+        # Assign a random enrollment year prefix
+        prefix = random.choice(["1902", "2002", "2102", "2202", "2302", "2402", "2502"]) 
+        full_student_code = prefix + student_code
+        dob = fake.date_of_birth(minimum_age=18, maximum_age=25)
+        # Create standard VNU email format: name + code @ vnu.edu.vn
+        base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
+        email = f"{base_email}@vnu.edu.vn"
+        status = 0
+        
+        if _ >= room_cap:
+            status = 0
+        else:
+            rand_val = random.random()
+            if rand_val < 0.05:
+                status = 0
+            else:
+                status = 1
+        
+        data = {
+            "student_code": full_student_code,
+            "first_name" : first_name,
+            "last_name" : last_name,
+            "gender" : fake.random_element(elements=('M', 'F')),
+            "dob" : dob,
+            "email": email,
+            "phone": fake.unique.phone_number()[:20],
+            "status": status     
+        }
+        students.append(data)
+      
+    return students
 
 def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     """
@@ -135,15 +144,8 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     contracts = []  
     today = date.today()
     
-    all_student_ids = list(all_student_infos.keys())
-    
-    n = min(n, len(all_student_ids))
-    selected_students = random.sample(all_student_ids, n)
-    
     active_students = [s_id for s_id, info in all_student_infos.items() if info[1] == 1]
-    
-    # Shuffling students' info 
-    random.shuffle(active_students)
+    active_students.sort()
         
     waiting_list = {
         "M": [], 
@@ -156,8 +158,10 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     odd_rooms = [r_id for r_id in all_room_ids if r_id % 2 != 0] # Seperate odd and even room_ids' from rooms 
     even_rooms = [r_id for r_id in all_room_ids if r_id % 2 == 0] # Odd rooms for male, even rooms for female
 
-    for i in range(n):
-        student_id = selected_students[i]
+    total_attempts = min(n, len(active_students))
+    
+    for i in range(total_attempts):
+        student_id = active_students[i]
         student_gender = all_student_infos[student_id][0]
         start_date = fake.date_between(start_date='-6m', end_date='today')
         intended_end_date = start_date + timedelta(days=180)
@@ -175,7 +179,7 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
             status = 'active'
             final_end_date = intended_end_date
         
-        if student_gender == "M": 
+        if student_gender == "F": 
             gender_spr = odd_rooms
         else:
             gender_spr = even_rooms
@@ -195,7 +199,7 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
         else:
             # Historical or cancelled records don't occupy current capacity
             room_id = random.choice(gender_spr) if gender_spr else random.choice(all_room_ids)
-        
+            
         data = {
             "student_id" : student_id,
             "room_id" : room_id,
@@ -361,20 +365,20 @@ def main():
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
         
         # Phase 1: Students and Rooms
-        raw_student = generated_students(amt_of_students)
         raw_rooms = generated_rooms(amt_of_rooms)
-    
-        insert_students(connection, raw_student)
         insert_rooms(connection, raw_rooms)
-        
-        # Refresh IDs and capacity info from DB for foreign key consistency
-        cursor.execute("SELECT student_id, gender, status FROM students")
-        all_student_infos = {stu_ID["student_id"] : (stu_ID["gender"], stu_ID["status"]) for stu_ID in cursor.fetchall()}
     
         cursor.execute("SELECT room_id, capacity FROM rooms")
         rooms_data = cursor.fetchall()
         room_caps = {r["room_id"]: r["capacity"] for r in rooms_data}
         all_room_ids = list(room_caps.keys())
+        
+        raw_student = generated_students(amt_of_students, room_caps)
+        insert_students(connection, raw_student)
+        
+        # Refresh IDs and capacity info from DB for foreign key consistency
+        cursor.execute("SELECT student_id, gender, status FROM students")
+        all_student_infos = {stu_ID["student_id"] : (stu_ID["gender"], stu_ID["status"]) for stu_ID in cursor.fetchall()}
         
         # Phase 2: Contracts (requires existing students/rooms)
         raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_infos, room_caps)
