@@ -72,6 +72,35 @@ This project focuses on building and optimizing a relational database for a Dorm
 ## Database Design
 ![ERD](imgs/dbms-project-erd.png)
 
+### Table Schema
+The project designs a minimum of 6 tables:
+- `students`
+- `rooms`
+- `contracts`
+- `meter_readings`
+- `invoices`
+- `audit_log`
+
+### Business Rules
+
+- BR-01: A `room` must not have `current_occupancy > capacity`  
+- BR-02: A `student` has **at most 1** `contract` with `status='active'` at a given time  
+- BR-03: A `room` can have multiple contracts over time, but cannot exceed capacity at the same time  
+- BR-04: Each room has a maximum of 1 `meter_readings` record per month  
+- BR-05: Each room has a maximum of 1 `invoice` per month (or 1 invoice/contract/month if chosen to attach by contract)
+- BR-06: Contract changes only take effect at the end of the month  
+  - Students are not allowed to "change rooms mid-month".  
+  - All status changes to `contracts.status` (active → ended/cancelled) and all new contracts (`INSERT`) are considered effective on the last day (LAST_DAY) of the current month or the configured month.
+- BR-07: Room allocation rule: Male students are allocated to rooms with even numbers; Female students are allocated to rooms with odd numbers.
+- BR-08: When a student with status 0 (inactive) is successfully allocated a room, the system automatically changes the status to 1 (active) and creates a new contract.
+
+> Note: BR-02 is difficult to strictly enforce in MySQL using a UNIQUE constraint if using ENUM/status.
+> Decision: enforce using **procedure/transaction** + supporting index.
+
+### Design Details
+See at: 
+[Data Dictionary](docs/data-dictionary.md)
+
 # 2. Setup Instruction
 ## Part 1: Docker Configuration
 **Prerequisites**
@@ -162,10 +191,6 @@ http://localhost:18501/
 Step 1: Build image from Dockerfile.k6
 ```bash
 docker build -f scripts/Dockerfile.k6 -t k6-sql .
-
-Bước 1: Build image trong file Dockerfile.k6
-```bash
-docker build -f scripts/Dockerfile.k6 -t k6-sql .
 ```
 
 Step 2: Create the results directory to store output (if it does not exist)
@@ -185,7 +210,7 @@ Step 4: Export raw CSV file (optional)
 docker run --rm -v "${PWD}:/app" -w /app `
   	-e MASTER_DB="root:123456@tcp(host.docker.internal:13306)/dormitory_management" `
 -e SLAVE_DB="root:123456@tcp(host.docker.internal:13307)/dormitory_management" `
-k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.jsn
+k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.js
 ```
 
 ---
@@ -394,5 +419,5 @@ Bước 4: Xuất file raw csv (tùy chọn)
 docker run --rm -v "${PWD}:/app" -w /app `
   	-e MASTER_DB="root:123456@tcp(host.docker.internal:13306)/dormitory_management" `
 -e SLAVE_DB="root:123456@tcp(host.docker.internal:13307)/dormitory_management" `
-k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.jsn
+k6-sql run --out csv=results/raw_metrics.csv scripts/benchmark.js
 ```
