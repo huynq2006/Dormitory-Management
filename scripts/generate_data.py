@@ -92,12 +92,6 @@ def generated_students(n, room_capacity):
     """
     students = []
     
-    room_cap = sum(room_capacity.values())
-        
-    # if n > 10000:
-    #     print("Limit reached: Student count cannot exceed 10,000")
-    #     n = 10000
-    
     for _ in range(n):
         first_name = fake.vn_first_name()
         last_name = fake.vn_last_name()
@@ -110,22 +104,14 @@ def generated_students(n, room_capacity):
         # Create standard VNU email format: name + code @ vnu.edu.vn
         base_email = normalize_name(first_name) + normalize_name(last_name) + full_student_code
         email = f"{base_email}@vnu.edu.vn"
+        gender = fake.random_element(elements=('M', 'F'))
         status = 0
-        
-        if _ >= room_cap:
-            status = 0
-        else:
-            rand_val = random.random()
-            if rand_val < 0.05:
-                status = 0
-            else:
-                status = 1
-        
+          
         data = {
             "student_code": full_student_code,
             "first_name" : first_name,
             "last_name" : last_name,
-            "gender" : fake.random_element(elements=('M', 'F')),
+            "gender" : gender,
             "dob" : dob,
             "email": email,
             "phone": fake.unique.phone_number()[:20],
@@ -146,69 +132,59 @@ def generated_contracts(n, all_room_ids, all_student_infos, room_caps):
     active_students = [s_id for s_id, info in all_student_infos.items() if info[1] == 1]
     active_students.sort()
         
-    waiting_list = {
-        "M": [], 
-        "F": []  
-    }
-        
     # Track current occupancy to prevent overfilling rooms during data generation
-    active_counts = {r_id: 0 for r_id in all_room_ids}
+    male_queue = [s_id for s_id, info in all_student_infos.items() if info[0] == 'M']
+    female_queue = [s_id for s_id, info in all_student_infos.items() if info[0] == 'F']
+    
+    male_queue.sort()
+    female_queue.sort()
     
     odd_rooms = [r_id for r_id in all_room_ids if r_id % 2 != 0] # Seperate odd and even room_ids' from rooms 
     even_rooms = [r_id for r_id in all_room_ids if r_id % 2 == 0] # Odd rooms for male, even rooms for female
 
+    active_counts = {r_id: 0 for r_id in all_room_ids}
+    students_to_activate = set() # For student about to set status = 1
+    contracts_created = 0
+    
     total_attempts = min(n, len(active_students))
     
-    for i in range(total_attempts):
-        student_id = active_students[i]
-        student_gender = all_student_infos[student_id][0]
-        start_date = fake.date_between(start_date='-6m', end_date='today')
-        intended_end_date = start_date + timedelta(days=180)
+    for room_id in all_room_ids:
+        if contracts_created >= n:
+            break
         
-        rand_val = random.random()
+        current_queue = female_queue if room_id in odd_rooms else male_queue
+        max_cap = room_caps.get(room_id, 0)
         
-        # 5% chance of early cancellation
-        if rand_val < 0.05:
-            status = 'cancelled'
-            final_end_date = start_date + timedelta(days=random.randint(10, 60))
-        elif intended_end_date < today:
-            status = 'ended'
-            final_end_date = intended_end_date
-        else:
-            status = 'active'
-            final_end_date = intended_end_date
-        
-        if student_gender == "F": 
-            gender_spr = odd_rooms
-        else:
-            gender_spr = even_rooms
-        
-        room_id = None
-        if status == 'active':
-            # Only pick rooms that haven't reached their capacity limit
-            available_rooms = [r for r in gender_spr if active_counts[r] < room_caps.get(r, 0)]
+        # Duyệt cuốn chiếu lấp đầy phòng dựa trên sức chứa và số lượng hợp đồng yêu cầu
+        while active_counts[room_id] < max_cap and current_queue and contracts_created < n:
+            student_id = current_queue.pop(0)
+            start_date = fake.date_between(start_date='-6m', end_date='today')
+            intended_end_date = start_date + timedelta(days=180)
             
-            if not available_rooms:
-                # If no space left, student_id will be in the waiting list. After changes in current_occupancy happen, waiting list will generate its own contract data
-                waiting_list[student_gender].append(student_id)
-                continue
-            else:
-                room_id = random.choice(available_rooms)
+            # if intended end date in the future (6 months), contracts is active
+            if intended_end_date >= today:
+                status = 'active'
                 active_counts[room_id] += 1
-        else:
-            # Historical or cancelled records don't occupy current capacity
-            room_id = random.choice(gender_spr) if gender_spr else random.choice(all_room_ids)
+                students_to_activate.add(student_id) 
+            else:
+                status = 'ended'
             
-        data = {
-            "student_id" : student_id,
-            "room_id" : room_id,
-            "start_date" : start_date,
-            "end_date" : final_end_date,
-            "status" : status
-        }
-        contracts.append(data)
-        
-    return contracts
+            data = {
+                "student_id" : student_id,
+                "room_id" : room_id,
+                "start_date" : start_date,
+                "end_date" : intended_end_date,
+                "status" : status
+            }
+            contracts.append(data)
+            contracts_created += 1
+    # ================= PHASE 2: ADDING STUDENTS INTO WAITING LISTS =================
+    waiting_list = {
+        "M": male_queue,   
+        "F": female_queue  
+    }
+            
+    return contracts, students_to_activate, waiting_list
 
 def _subtract_months(first_day_of_month, months):
      """Helper function to calculate the first day of a month N months ago."""
@@ -375,13 +351,28 @@ def main():
         raw_student = generated_students(amt_of_students, room_caps)
         insert_students(connection, raw_student)
         
-        # Refresh IDs and capacity info from DB for foreign key consistency
+         # Refresh IDs and capacity info from DB for foreign key consistency (status = 0)
         cursor.execute("SELECT student_id, gender, status FROM students")
         all_student_infos = {stu_ID["student_id"] : (stu_ID["gender"], stu_ID["status"]) for stu_ID in cursor.fetchall()}
         
         # Phase 2: Contracts (requires existing students/rooms)
-        raw_contracts = generated_contracts(amt_of_contracts, all_room_ids, all_student_infos, room_caps)
+        raw_contracts, students_to_activate, raw_waiting_list = generated_contracts(amt_of_contracts, all_room_ids, all_student_infos, room_caps)
         insert_contracts(connection, raw_contracts)
+        
+        # Update status = 1 for students to rooms that have status = "active"
+        if students_to_activate:
+            format_strings = ','.join(['%s'] * len(students_to_activate))
+            update_sql = f"UPDATE students SET status = 1 WHERE student_id IN ({format_strings})"
+            cursor.execute(update_sql, list(students_to_activate))
+            connection.commit()
+            
+        total_waiting_m = len(raw_waiting_list["M"])
+        total_waiting_f = len(raw_waiting_list["F"])
+        print(f"Waiting List Info: {total_waiting_m} Males waiting, {total_waiting_f} Females waiting.")
+        if total_waiting_m > 0:
+            print(f"First 5 males in waiting queue with ID: {raw_waiting_list['M'][:5]}")
+        if total_waiting_f > 0:
+            print(f"First 5 females in waiting queue with ID: {raw_waiting_list['F'][:5]}")
         
         # Phase 3: Utility Readings
         raw_readings = generated_meter_readings(all_room_ids, cnt_months_mtr_readings)
