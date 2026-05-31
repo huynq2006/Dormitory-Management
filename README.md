@@ -298,6 +298,15 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 ## Thiết kế chức năng hệ thống
 ![Function](imgs/dormitory-function.png)
 
+Hệ thống quản lý ký túc xá được thiết kế với các module chức năng cốt lõi nhằm tối ưu hóa quy trình vận hành và tự động hóa các tác vụ quản lý, bao gồm:
+
+* **Quản lý danh sách phòng:** Xem trạng thái sức chứa, tiện ích tòa nhà và tỷ lệ lấp đầy thực tế.
+* **Quản lý hợp đồng & Giao dịch:** Hỗ trợ quy trình chuyển phòng an toàn và cấp phòng mới cho sinh viên từ danh sách chờ.
+* **Quản lý công nợ tự động:** Tự động tính toán chi phí (phòng, điện, nước, dịch vụ) và phát hành hóa đơn vào ngày đầu tháng.
+* **Theo dõi nợ quá hạn:** Tra cứu nhanh danh sách sinh viên đang nợ phí, tự động tính số ngày trễ hạn.
+* **Quản lý danh sách chờ:** Lọc và hiển thị danh sách sinh viên chưa được xếp phòng.
+* **Quản trị viên (SQL Workspace):** Không gian cho phép thực thi trực tiếp các câu lệnh SQL để can thiệp hệ thống.
+
 ## Thiết kế Cơ sở Dữ liệu
 ![ERD](imgs/dbms-project-erd.png)
 
