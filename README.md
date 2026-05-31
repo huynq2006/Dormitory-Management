@@ -69,6 +69,16 @@ This project focuses on building and optimizing a relational database for a Dorm
 └── README.md               # Project introduction documentation
 ```
 
+## System & Data Flow Diagram
+### System Architecture Diagram
+![System](imgs/system-diagram.png)
+
+### Data Flow Diagram
+![DataFlow](imgs/data-flow.png)
+
+## Function Design
+![Function](imgs/dormitory-function.png)
+
 ## Database Design
 ![ERD](imgs/dbms-project-erd.png)
 
@@ -277,6 +287,16 @@ Dự án này tập trung vào việc xây dựng và tối ưu hóa cơ sở d�
 ├── requirements.txt        # Thư viện Python cần cài đặt
 └── README.md               # Tài liệu giới thiệu dự án
 ```
+
+## Thiết kế hệ thống và luồng dữ liệu
+### Sơ đồ thiết kế hệ thống
+![System](imgs/system-diagram.png)
+
+### Sơ đồ thiết kế luồng dữ liệu
+![DataFlow](imgs/data-flow.png)
+
+## Thiết kế chức năng hệ thống
+![Function](imgs/dormitory-function.png)
 
 ## Thiết kế Cơ sở Dữ liệu
 ![ERD](imgs/dbms-project-erd.png)
