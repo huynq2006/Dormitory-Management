@@ -76,8 +76,17 @@ This project focuses on building and optimizing a relational database for a Dorm
 ### Data Flow Diagram
 ![DataFlow](imgs/data-flow.png)
 
-## Function Design
+## System Functional Design
 ![Function](imgs/dormitory-function.png)
+
+The dormitory management system is designed with core functional modules to optimize operational workflows and automate administrative tasks, including:
+
+* **Room List Management:** View capacity status, building amenities, and real-time occupancy rates.
+* **Contract & Transaction Management:** Support secure room transfer workflows and allocate new rooms to students from the waiting list.
+* **Automated Billing Management:** Automatically calculate costs (rent, electricity, water, services) and issue invoices on the first day of the month.
+* **Overdue Debt Tracking:** Quickly look up students with outstanding balances and automatically compute the number of days overdue.
+* **Waiting List Management:** Filter and display the list of students who have not yet been assigned a room.
+* **Administrator (SQL Workspace):** A dedicated space allowing the direct execution of SQL commands for system intervention.
 
 ## Database Design
 ![ERD](imgs/dbms-project-erd.png)
